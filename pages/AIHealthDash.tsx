@@ -1,11 +1,12 @@
-import React from 'react';
-import { GlassCard, Button, Badge } from '../components/UI';
+import React, { useState, useEffect } from 'react';
+import { GlassCard, Button, Badge, Modal } from '../components/UI';
 import { HolographicModel } from '../components/3DVisuals';
 import { 
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, 
-  ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid 
+  ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  ComposedChart, Bar, Line, Legend, Scatter
 } from 'recharts';
-import { Activity, Heart, Zap, Brain, ChevronRight, Thermometer } from 'lucide-react';
+import { Activity, Heart, Zap, Brain, Thermometer, Download, Eye, RefreshCw, FileText } from 'lucide-react';
 
 const RISK_DATA = [
   { subject: 'Cardiac', A: 120, fullMark: 150 },
@@ -16,7 +17,7 @@ const RISK_DATA = [
   { subject: 'Environmental', A: 65, fullMark: 150 },
 ];
 
-const VITALS_DATA = [
+const INITIAL_VITALS = [
   { time: '08:00', heart: 72, temp: 98.6 },
   { time: '10:00', heart: 75, temp: 98.7 },
   { time: '12:00', heart: 82, temp: 98.8 },
@@ -27,16 +28,98 @@ const VITALS_DATA = [
   { time: '22:00', heart: 66, temp: 98.2 },
 ];
 
+const PREDICTION_DATA = Array.from({ length: 12 }, (_, i) => ({
+  hour: `+${i + 1}h`,
+  predictedScore: 85 + Math.sin(i * 0.5) * 5,
+  confidenceLow: 80 + Math.sin(i * 0.5) * 5,
+  confidenceHigh: 90 + Math.sin(i * 0.5) * 5,
+}));
+
 export const AIHealthDash: React.FC = () => {
+  // State
+  const [vitalsData, setVitalsData] = useState(INITIAL_VITALS);
+  const [isLive, setIsLive] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [visibleSeries, setVisibleSeries] = useState({ heart: true, temp: true });
+  
+  // Transform VITALS_DATA to simulate a 7-day week
+  const weeklyData = vitalsData.slice(0, 7).map((d, i) => ({
+    ...d,
+    day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i] || `Day ${i+1}`
+  }));
+
+  // Real-time Simulation Effect
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (isLive) {
+      interval = setInterval(() => {
+        setVitalsData(prev => {
+          const last = prev[prev.length - 1];
+          const now = new Date();
+          const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+          
+          // Random walk for values
+          const newHeart = Math.max(60, Math.min(120, last.heart + (Math.random() - 0.5) * 5));
+          const newTemp = Math.max(97, Math.min(100, last.temp + (Math.random() - 0.5) * 0.2));
+          
+          const newPoint = { 
+            time: timeStr, 
+            heart: Math.round(newHeart), 
+            temp: parseFloat(newTemp.toFixed(1)) 
+          };
+          
+          // Keep array size constant-ish
+          return [...prev.slice(1), newPoint];
+        });
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [isLive]);
+
+  // Export Function
+  const handleExport = () => {
+    const headers = ['Time', 'Heart Rate', 'Temperature'];
+    const rows = vitalsData.map(d => [d.time, d.heart, d.temp]);
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "wysh_vitals_report.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const toggleSeries = (key: 'heart' | 'temp') => {
+    setVisibleSeries(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
     <div className="min-h-screen p-6 space-y-8">
       
-      <div className="flex justify-between items-end max-w-7xl mx-auto w-full">
+      {/* Top Controls */}
+      <div className="flex flex-col md:flex-row justify-between items-end max-w-7xl mx-auto w-full gap-4">
         <div>
            <Badge color="purple">AI BETA v2.1</Badge>
            <h1 className="text-4xl font-display font-bold text-white mt-2">Personal Health <span className="text-teal-glow">Intelligence</span></h1>
         </div>
-        <Button variant="outline" className="text-sm">Export Report</Button>
+        <div className="flex gap-3">
+            <Button 
+                variant={isLive ? "primary" : "outline"} 
+                onClick={() => setIsLive(!isLive)}
+                className={isLive ? "animate-pulse" : ""}
+                icon={<RefreshCw size={16} className={isLive ? "animate-spin" : ""} />}
+            >
+                {isLive ? 'Live Simulation On' : 'Start Simulation'}
+            </Button>
+            <Button variant="outline" onClick={handleExport} icon={<Download size={16}/>}>
+                Export Data
+            </Button>
+            <Button variant="secondary" onClick={() => setIsModalOpen(true)} icon={<Eye size={16}/>}>
+                Patient Details
+            </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto w-full">
@@ -98,6 +181,38 @@ export const AIHealthDash: React.FC = () => {
                 </div>
             </GlassCard>
 
+            {/* AI Prediction Chart */}
+            <GlassCard className="h-[350px]">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 className="text-white font-bold text-lg">Future Health Projection (12h)</h3>
+                        <p className="text-text-secondary text-xs">AI forecasted stability score</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Badge color="purple">Predictive</Badge>
+                    </div>
+                </div>
+                <div className="h-[250px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={PREDICTION_DATA}>
+                            <defs>
+                                <linearGradient id="colorConfidence" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#8763FF" stopOpacity={0.1}/>
+                                    <stop offset="95%" stopColor="#8763FF" stopOpacity={0.05}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                            <XAxis dataKey="hour" stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis domain={[60, 100]} stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
+                            <Tooltip contentStyle={{ backgroundColor: '#1D2329', border: '1px solid #333' }} />
+                            {/* Confidence Interval using Area */}
+                            <Area type="monotone" dataKey="confidenceHigh" stroke="none" fill="url(#colorConfidence)" />
+                            <Line type="monotone" dataKey="predictedScore" stroke="#teal" strokeWidth={3} dot={false} strokeDasharray="5 5" />
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                </div>
+            </GlassCard>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <GlassCard>
                     <h3 className="text-white font-bold mb-4 flex items-center gap-2">
@@ -105,7 +220,7 @@ export const AIHealthDash: React.FC = () => {
                     </h3>
                      <div className="h-[150px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={VITALS_DATA.slice(0, 6)}>
+                            <AreaChart data={vitalsData.slice(-6)}>
                                 <defs>
                                     <linearGradient id="colorHeart" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#F87171" stopOpacity={0.8}/>
@@ -115,7 +230,7 @@ export const AIHealthDash: React.FC = () => {
                                 <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                 <XAxis dataKey="time" stroke="#666" fontSize={10} tickLine={false} />
                                 <YAxis hide domain={['auto', 'auto']} />
-                                <Area type="monotone" dataKey="heart" stroke="#F87171" fillOpacity={1} fill="url(#colorHeart)" />
+                                <Area type="monotone" dataKey="heart" stroke="#F87171" fillOpacity={1} fill="url(#colorHeart)" isAnimationActive={false} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
@@ -142,11 +257,88 @@ export const AIHealthDash: React.FC = () => {
                 </GlassCard>
             </div>
 
+            {/* Vitals Trends Chart (Area) with Interactive Legend */}
+            <GlassCard className="h-[350px]">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-white font-bold text-lg">Vitals Trends (Intraday)</h3>
+                    <div className="flex gap-4">
+                        <button 
+                          onClick={() => toggleSeries('heart')}
+                          className={`flex items-center gap-2 text-xs transition-opacity ${visibleSeries.heart ? 'opacity-100' : 'opacity-40'}`}
+                        >
+                            <span className="w-2 h-2 rounded-full bg-red-400"></span> Heart Rate
+                        </button>
+                        <button 
+                          onClick={() => toggleSeries('temp')}
+                          className={`flex items-center gap-2 text-xs transition-opacity ${visibleSeries.temp ? 'opacity-100' : 'opacity-40'}`}
+                        >
+                            <span className="w-2 h-2 rounded-full bg-blue-400"></span> Temperature
+                        </button>
+                    </div>
+                </div>
+                <div className="h-[250px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={vitalsData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorHeart2" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#F87171" stopOpacity={0.2}/>
+                                    <stop offset="95%" stopColor="#F87171" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#60A5FA" stopOpacity={0.2}/>
+                                    <stop offset="95%" stopColor="#60A5FA" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                            <XAxis dataKey="time" stroke="#666" fontSize={11} tickLine={false} axisLine={false} />
+                            <YAxis yAxisId="left" stroke="#F87171" fontSize={11} tickLine={false} axisLine={false} domain={[60, 120]} />
+                            <YAxis yAxisId="right" orientation="right" stroke="#60A5FA" fontSize={11} tickLine={false} axisLine={false} domain={[97, 101]} />
+                            <Tooltip contentStyle={{ backgroundColor: '#1D2329', border: '1px solid #333', borderRadius: '8px' }} itemStyle={{ fontSize: '12px' }} />
+                            
+                            {visibleSeries.heart && (
+                              <Area yAxisId="left" type="monotone" dataKey="heart" stroke="#F87171" fill="url(#colorHeart2)" strokeWidth={2} name="Heart Rate" isAnimationActive={false} />
+                            )}
+                            {visibleSeries.temp && (
+                              <Area yAxisId="right" type="monotone" dataKey="temp" stroke="#60A5FA" fill="url(#colorTemp)" strokeWidth={2} name="Temperature" isAnimationActive={false} />
+                            )}
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            </GlassCard>
+
+            {/* NEW 7-Day History Chart */}
+            <GlassCard className="h-[350px]">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-white font-bold text-lg">7-Day Vitals Overview</h3>
+                    <div className="flex items-center gap-2">
+                         <span className="px-2 py-1 bg-white/5 rounded text-xs text-text-secondary border border-white/10">Weekly View</span>
+                    </div>
+                </div>
+                <div className="h-[250px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={weeklyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                            <XAxis dataKey="day" stroke="#666" fontSize={11} tickLine={false} axisLine={false} />
+                            <YAxis yAxisId="left" stroke="#4D8B83" fontSize={11} tickLine={false} axisLine={false} domain={[50, 100]} />
+                            <YAxis yAxisId="right" orientation="right" stroke="#8763FF" fontSize={11} tickLine={false} axisLine={false} domain={[96, 100]} />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#1D2329', border: '1px solid #333', borderRadius: '8px' }} 
+                              itemStyle={{ fontSize: '12px' }}
+                              cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                            />
+                            <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                            <Bar yAxisId="left" dataKey="heart" name="Avg Heart Rate" fill="#4D8B83" barSize={20} radius={[4, 4, 0, 0]} />
+                            <Line yAxisId="right" type="monotone" dataKey="temp" name="Avg Temperature" stroke="#8763FF" strokeWidth={3} dot={{r: 4, fill:'#8763FF'}} />
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                </div>
+            </GlassCard>
+
             {/* Vitals History Section */}
             <GlassCard className="h-[320px] flex flex-col">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-white font-bold flex items-center gap-2">
-                     <Activity size={18} className="text-teal" /> Vitals History
+                     <Activity size={18} className="text-teal" /> Vitals History List
                   </h3>
                   <Badge color="teal">Live Data</Badge>
                 </div>
@@ -160,7 +352,7 @@ export const AIHealthDash: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {VITALS_DATA.map((row, i) => (
+                            {vitalsData.slice().reverse().map((row, i) => (
                                 <tr key={i} className="group hover:bg-white/5 transition-colors">
                                     <td className="py-3 text-sm text-teal font-mono">{row.time}</td>
                                     <td className="py-3 text-sm text-white">
@@ -184,6 +376,64 @@ export const AIHealthDash: React.FC = () => {
 
         </div>
       </div>
+
+      {/* Patient Detail Modal */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Patient Record #WYSH-9021">
+        <div className="space-y-6">
+            <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-teal/20 rounded-full flex items-center justify-center border border-teal text-teal font-bold text-xl">
+                    AD
+                </div>
+                <div>
+                    <h3 className="text-white font-bold text-lg">Alex Doe</h3>
+                    <p className="text-text-secondary text-sm">34 Male • O+ Blood Type</p>
+                </div>
+                <div className="ml-auto">
+                    <Badge color="teal">Active</Badge>
+                </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-white/5 rounded-lg border border-white/5">
+                    <p className="text-xs text-text-secondary uppercase tracking-wider">Primary Care</p>
+                    <p className="text-white font-medium">Dr. Sarah Chen</p>
+                </div>
+                <div className="p-4 bg-white/5 rounded-lg border border-white/5">
+                    <p className="text-xs text-text-secondary uppercase tracking-wider">Insurance</p>
+                    <p className="text-white font-medium">Wysh Health Plus</p>
+                </div>
+                <div className="p-4 bg-white/5 rounded-lg border border-white/5">
+                    <p className="text-xs text-text-secondary uppercase tracking-wider">Last Visit</p>
+                    <p className="text-white font-medium">Oct 12, 2024</p>
+                </div>
+                 <div className="p-4 bg-white/5 rounded-lg border border-white/5">
+                    <p className="text-xs text-text-secondary uppercase tracking-wider">Next Appointment</p>
+                    <p className="text-teal font-medium">Tomorrow, 10:00 AM</p>
+                </div>
+            </div>
+
+            <div>
+                <h4 className="text-white font-bold mb-3 border-b border-white/10 pb-2">Medical Notes</h4>
+                <p className="text-text-secondary text-sm leading-relaxed">
+                    Patient presenting with mild arrhythmia. Prescribed beta-blockers. advised to monitor heart rate daily. 
+                    Lifestyle changes recommended include increased hydration and reduced sodium intake.
+                </p>
+            </div>
+
+             <div>
+                <h4 className="text-white font-bold mb-3 border-b border-white/10 pb-2">Documents</h4>
+                 <div className="flex gap-3">
+                     <div className="flex items-center gap-2 p-2 bg-white/5 rounded border border-white/5 text-xs text-text-secondary cursor-pointer hover:bg-white/10">
+                         <FileText size={14} /> Lab_Results_Oct.pdf
+                     </div>
+                     <div className="flex items-center gap-2 p-2 bg-white/5 rounded border border-white/5 text-xs text-text-secondary cursor-pointer hover:bg-white/10">
+                         <FileText size={14} /> ECG_Scan_Full.pdf
+                     </div>
+                 </div>
+            </div>
+        </div>
+      </Modal>
+
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React from 'react';
+import { X } from 'lucide-react';
 
 export const GlassCard: React.FC<{ 
   children: React.ReactNode; 
@@ -76,3 +77,26 @@ export const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (pro
     className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal transition-all placeholder:text-text-secondary/50"
   />
 );
+
+export const Modal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}> = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <GlassCard className="w-full max-w-2xl relative z-10 max-h-[90vh] overflow-y-auto bg-surgical border border-white/10 shadow-2xl">
+        <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+          <h2 className="text-xl font-display font-bold text-white">{title}</h2>
+          <button onClick={onClose} className="text-text-secondary hover:text-white transition-colors">
+            <X size={24} />
+          </button>
+        </div>
+        {children}
+      </GlassCard>
+    </div>
+  );
+};
