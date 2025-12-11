@@ -1,12 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { GlassCard, Button, Badge, Modal } from '../components/UI';
 import { HolographicModel } from '../components/3DVisuals';
 import { 
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, 
   ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  ComposedChart, Bar, Line, Legend, Scatter
+  ComposedChart, Bar, Line, Legend
 } from 'recharts';
-import { Activity, Heart, Zap, Brain, Thermometer, Download, Eye, RefreshCw, FileText } from 'lucide-react';
+import { Activity, Heart, Zap, Brain, Thermometer, Download, Eye, RefreshCw, FileText, User, Calendar, Shield, Stethoscope } from 'lucide-react';
 
 const RISK_DATA = [
   { subject: 'Cardiac', A: 120, fullMark: 150 },
@@ -28,12 +29,29 @@ const INITIAL_VITALS = [
   { time: '22:00', heart: 66, temp: 98.2 },
 ];
 
-const PREDICTION_DATA = Array.from({ length: 12 }, (_, i) => ({
-  hour: `+${i + 1}h`,
-  predictedScore: 85 + Math.sin(i * 0.5) * 5,
-  confidenceLow: 80 + Math.sin(i * 0.5) * 5,
-  confidenceHigh: 90 + Math.sin(i * 0.5) * 5,
-}));
+// Static weekly data for 7-Day History to ensure stable visualization
+const WEEKLY_DATA = [
+  { day: 'Mon', heart: 68, temp: 98.2 },
+  { day: 'Tue', heart: 72, temp: 98.4 },
+  { day: 'Wed', heart: 75, temp: 98.1 },
+  { day: 'Thu', heart: 71, temp: 98.3 },
+  { day: 'Fri', heart: 74, temp: 98.6 },
+  { day: 'Sat', heart: 82, temp: 98.8 },
+  { day: 'Sun', heart: 70, temp: 98.2 },
+];
+
+// Prediction data with widening confidence interval (uncertainty increases with time)
+const PREDICTION_DATA = Array.from({ length: 12 }, (_, i) => {
+  const trend = Math.sin(i * 0.5) * 5;
+  const baseScore = 85 + trend;
+  const uncertainty = 2 + (i * 0.8);
+  return {
+    hour: `+${i + 1}h`,
+    predictedScore: parseFloat(baseScore.toFixed(1)),
+    confidenceLow: parseFloat((baseScore - uncertainty).toFixed(1)),
+    confidenceHigh: parseFloat((baseScore + uncertainty).toFixed(1)),
+  };
+});
 
 export const AIHealthDash: React.FC = () => {
   // State
@@ -41,12 +59,6 @@ export const AIHealthDash: React.FC = () => {
   const [isLive, setIsLive] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [visibleSeries, setVisibleSeries] = useState({ heart: true, temp: true });
-  
-  // Transform VITALS_DATA to simulate a 7-day week
-  const weeklyData = vitalsData.slice(0, 7).map((d, i) => ({
-    ...d,
-    day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i] || `Day ${i+1}`
-  }));
 
   // Real-time Simulation Effect
   useEffect(() => {
@@ -68,7 +80,7 @@ export const AIHealthDash: React.FC = () => {
             temp: parseFloat(newTemp.toFixed(1)) 
           };
           
-          // Keep array size constant-ish
+          // Keep array size constant
           return [...prev.slice(1), newPoint];
         });
       }, 2000);
@@ -186,7 +198,7 @@ export const AIHealthDash: React.FC = () => {
                 <div className="flex justify-between items-center mb-6">
                     <div>
                         <h3 className="text-white font-bold text-lg">Future Health Projection (12h)</h3>
-                        <p className="text-text-secondary text-xs">AI forecasted stability score</p>
+                        <p className="text-text-secondary text-xs">AI forecasted stability score with confidence intervals</p>
                     </div>
                     <div className="flex items-center gap-2">
                         <Badge color="purple">Predictive</Badge>
@@ -205,9 +217,16 @@ export const AIHealthDash: React.FC = () => {
                             <XAxis dataKey="hour" stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
                             <YAxis domain={[60, 100]} stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip contentStyle={{ backgroundColor: '#1D2329', border: '1px solid #333' }} />
-                            {/* Confidence Interval using Area */}
-                            <Area type="monotone" dataKey="confidenceHigh" stroke="none" fill="url(#colorConfidence)" />
-                            <Line type="monotone" dataKey="predictedScore" stroke="#teal" strokeWidth={3} dot={false} strokeDasharray="5 5" />
+                            {/* Confidence Interval using stacked Area hack or just Area for range */}
+                            <Area type="monotone" dataKey="confidenceHigh" stackId="1" stroke="none" fill="transparent" />
+                            <Area type="monotone" dataKey="confidenceLow" stackId="2" stroke="none" fill="url(#colorConfidence)" /> 
+                            {/* Simplified visual: Just filling the area under prediction or custom shape. 
+                                For standard recharts, we can use an Area representing the range if we prep data differently.
+                                Here we just show the High bound area with low opacity for visual effect.
+                            */}
+                            <Area type="monotone" dataKey="confidenceHigh" stroke="none" fill="url(#colorConfidence)" fillOpacity={0.2} />
+                            
+                            <Line type="monotone" dataKey="predictedScore" stroke="#4D8B83" strokeWidth={3} dot={false} strokeDasharray="5 5" name="Forecast" />
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
@@ -306,17 +325,17 @@ export const AIHealthDash: React.FC = () => {
                 </div>
             </GlassCard>
 
-            {/* NEW 7-Day History Chart */}
+            {/* 7-Day History Chart */}
             <GlassCard className="h-[350px]">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-white font-bold text-lg">7-Day Vitals Overview</h3>
                     <div className="flex items-center gap-2">
-                         <span className="px-2 py-1 bg-white/5 rounded text-xs text-text-secondary border border-white/10">Weekly View</span>
+                         <span className="px-2 py-1 bg-white/5 rounded text-xs text-text-secondary border border-white/10">Weekly History</span>
                     </div>
                 </div>
                 <div className="h-[250px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={weeklyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <ComposedChart data={WEEKLY_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                             <XAxis dataKey="day" stroke="#666" fontSize={11} tickLine={false} axisLine={false} />
                             <YAxis yAxisId="left" stroke="#4D8B83" fontSize={11} tickLine={false} axisLine={false} domain={[50, 100]} />
@@ -380,56 +399,78 @@ export const AIHealthDash: React.FC = () => {
       {/* Patient Detail Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Patient Record #WYSH-9021">
         <div className="space-y-6">
+            {/* Header / Basic Info */}
             <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-teal/20 rounded-full flex items-center justify-center border border-teal text-teal font-bold text-xl">
+                <div className="w-16 h-16 bg-teal/20 rounded-full flex items-center justify-center border border-teal text-teal font-bold text-xl relative">
                     AD
+                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-black rounded-full"></div>
                 </div>
                 <div>
                     <h3 className="text-white font-bold text-lg">Alex Doe</h3>
-                    <p className="text-text-secondary text-sm">34 Male • O+ Blood Type</p>
+                    <div className="flex items-center gap-2 text-text-secondary text-sm">
+                        <User size={14} /> 34 Male 
+                        <span className="w-1 h-1 bg-white/20 rounded-full"></span>
+                        <Activity size={14} /> Blood: <span className="text-teal font-bold">O+</span>
+                    </div>
                 </div>
                 <div className="ml-auto">
                     <Badge color="teal">Active</Badge>
                 </div>
             </div>
             
+            {/* Detailed Grid */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-white/5 rounded-lg border border-white/5">
-                    <p className="text-xs text-text-secondary uppercase tracking-wider">Primary Care</p>
+                    <p className="flex items-center gap-2 text-xs text-text-secondary uppercase tracking-wider mb-1">
+                        <Stethoscope size={12} /> Primary Care
+                    </p>
                     <p className="text-white font-medium">Dr. Sarah Chen</p>
                 </div>
                 <div className="p-4 bg-white/5 rounded-lg border border-white/5">
-                    <p className="text-xs text-text-secondary uppercase tracking-wider">Insurance</p>
+                    <p className="flex items-center gap-2 text-xs text-text-secondary uppercase tracking-wider mb-1">
+                        <Shield size={12} /> Insurance
+                    </p>
                     <p className="text-white font-medium">Wysh Health Plus</p>
+                    <p className="text-xs text-teal mt-1">Premium Plan</p>
                 </div>
                 <div className="p-4 bg-white/5 rounded-lg border border-white/5">
-                    <p className="text-xs text-text-secondary uppercase tracking-wider">Last Visit</p>
+                    <p className="flex items-center gap-2 text-xs text-text-secondary uppercase tracking-wider mb-1">
+                        <Calendar size={12} /> Last Visit
+                    </p>
                     <p className="text-white font-medium">Oct 12, 2024</p>
                 </div>
                  <div className="p-4 bg-white/5 rounded-lg border border-white/5">
-                    <p className="text-xs text-text-secondary uppercase tracking-wider">Next Appointment</p>
+                    <p className="flex items-center gap-2 text-xs text-text-secondary uppercase tracking-wider mb-1">
+                        <Calendar size={12} /> Next Appointment
+                    </p>
                     <p className="text-teal font-medium">Tomorrow, 10:00 AM</p>
                 </div>
             </div>
 
+            {/* Notes */}
             <div>
                 <h4 className="text-white font-bold mb-3 border-b border-white/10 pb-2">Medical Notes</h4>
-                <p className="text-text-secondary text-sm leading-relaxed">
-                    Patient presenting with mild arrhythmia. Prescribed beta-blockers. advised to monitor heart rate daily. 
+                <p className="text-text-secondary text-sm leading-relaxed p-3 bg-black/20 rounded border border-white/5">
+                    Patient presenting with mild arrhythmia. Prescribed beta-blockers. Advised to monitor heart rate daily. 
                     Lifestyle changes recommended include increased hydration and reduced sodium intake.
                 </p>
             </div>
 
+            {/* Documents */}
              <div>
                 <h4 className="text-white font-bold mb-3 border-b border-white/10 pb-2">Documents</h4>
                  <div className="flex gap-3">
-                     <div className="flex items-center gap-2 p-2 bg-white/5 rounded border border-white/5 text-xs text-text-secondary cursor-pointer hover:bg-white/10">
-                         <FileText size={14} /> Lab_Results_Oct.pdf
+                     <div className="flex items-center gap-2 p-2 bg-white/5 rounded border border-white/5 text-xs text-text-secondary cursor-pointer hover:bg-white/10 hover:text-white transition-colors">
+                         <FileText size={14} className="text-teal" /> Lab_Results_Oct.pdf
                      </div>
-                     <div className="flex items-center gap-2 p-2 bg-white/5 rounded border border-white/5 text-xs text-text-secondary cursor-pointer hover:bg-white/10">
-                         <FileText size={14} /> ECG_Scan_Full.pdf
+                     <div className="flex items-center gap-2 p-2 bg-white/5 rounded border border-white/5 text-xs text-text-secondary cursor-pointer hover:bg-white/10 hover:text-white transition-colors">
+                         <FileText size={14} className="text-teal" /> ECG_Scan_Full.pdf
                      </div>
                  </div>
+            </div>
+            
+            <div className="flex justify-end pt-4 border-t border-white/10">
+                <Button variant="outline" className="text-xs">Edit Record</Button>
             </div>
         </div>
       </Modal>
