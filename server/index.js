@@ -20,6 +20,7 @@ import { prisma } from './lib/prisma.js';
 
 // Modules
 import { clinicalRouter } from './modules/clinical/routes.js';
+import { abdmRouter } from './modules/abdm/routes.js'; // Added
 import { authRequired } from './middleware/auth.js';
 import { errorHandler } from './middleware/error.js';
 import { AuditService } from './modules/audit/service.js';
@@ -123,6 +124,7 @@ app.get('/internal/metrics', (req, res) => {
 
 // --- API ROUTES ---
 app.use('/api/clinical', clinicalRouter);
+app.use('/api/abdm', abdmRouter); // Mount ABDM Router
 
 app.get('/api/audit/mine', authRequired, (req, res) => {
   const logs = AuditService.listByActor(req.user.id);

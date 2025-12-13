@@ -26,6 +26,7 @@ import { PatientPrescriptions } from './features/patient/pages/PatientPrescripti
 import { PatientLabs } from './features/patient/pages/PatientLabs';
 import { AppointmentSummary } from './features/patient/pages/AppointmentSummary';
 import { AIInsights } from './features/patient/pages/AIInsights';
+import { AbhaManager } from './features/patient/pages/AbhaManager';
 
 const App: React.FC = () => {
   return (
@@ -105,6 +106,13 @@ const App: React.FC = () => {
                 <Route path="/profile" element={
                     <ProtectedRoute>
                         <ProfilePage />
+                    </ProtectedRoute>
+                } />
+
+                {/* ABDM Route */}
+                <Route path="/abha" element={
+                    <ProtectedRoute>
+                        <AbhaManager />
                     </ProtectedRoute>
                 } />
 

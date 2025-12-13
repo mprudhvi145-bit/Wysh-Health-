@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid 
 } from 'recharts';
-import { MessageSquare, Bell, FileText, Pill, Calendar, TestTube } from 'lucide-react';
+import { MessageSquare, Bell, FileText, Pill, Calendar, TestTube, ShieldCheck } from 'lucide-react';
 import { GlassCard, Button } from '../../components/UI';
 import { MOCK_DOCTORS } from '../../utils/constants';
 import { generateHealthInsight } from '../../services/geminiService';
@@ -69,7 +69,19 @@ export const PatientDashboard: React.FC = () => {
         </div>
 
         {/* Action Shortcuts */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+           {/* ABHA Shortcut - New */}
+           <GlassCard 
+             className="flex flex-col items-center justify-center p-4 cursor-pointer hover:bg-orange-500/10 hover:border-orange-500/30 transition-all group border-orange-500/20"
+             onClick={() => navigate('/abha')}
+             hoverEffect={false}
+           >
+             <div className="p-3 bg-orange-500/10 rounded-full text-orange-500 mb-2 group-hover:scale-110 transition-transform">
+               <ShieldCheck size={24} />
+             </div>
+             <span className="text-sm font-bold text-white">ABHA ID</span>
+           </GlassCard>
+
            <GlassCard 
              className="flex flex-col items-center justify-center p-4 cursor-pointer hover:bg-white/5 transition-colors group"
              onClick={() => navigate('/dashboard/records')}

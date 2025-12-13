@@ -36,8 +36,14 @@ export const mem = {
         gender: 'Male', 
         phone: '555-0192', 
         allergies: ['Peanuts'], 
-        chronicConditions: ['Arrhythmia'], 
-        // --- PILLAR 2: LONGITUDINAL RECORD ---
+        chronicConditions: ['Arrhythmia'],
+        // ABDM Identity Fields
+        abha: {
+            id: '91-2345-6789-1234',
+            address: 'alex.doe@abdm',
+            status: 'LINKED',
+            linkedAt: '2024-01-15T10:00:00Z'
+        },
         problems: [
             { id: 'prob_1', diagnosis: 'Arrhythmia', status: 'Active', onset: '2023-01-15' },
             { id: 'prob_2', diagnosis: 'Seasonal Allergies', status: 'Active', onset: '2020-03-10' }
@@ -45,9 +51,38 @@ export const mem = {
         lastVisit: '2024-10-12', 
         status: 'Stable' 
     },
-    { id: 'p2', userId: 'usr_pat_2', name: 'Maria Garcia', dob: '1995-08-15', gender: 'Female', phone: '555-0193', allergies: [], chronicConditions: ['Pregnancy'], problems: [{ id: 'prob_3', diagnosis: 'Pregnancy', status: 'Active', onset: '2024-05-01' }], lastVisit: '2024-10-15', status: 'Active' },
-    { id: 'p3', userId: 'usr_pat_3', name: 'John Smith', dob: '1978-11-30', gender: 'Male', phone: '555-0194', allergies: ['Penicillin'], chronicConditions: ['Hypertension'], problems: [{ id: 'prob_4', diagnosis: 'Essential Hypertension', status: 'Active', onset: '2019-11-20' }], lastVisit: '2024-10-10', status: 'Critical' }
+    { id: 'p2', userId: 'usr_pat_2', name: 'Maria Garcia', dob: '1995-08-15', gender: 'Female', phone: '555-0193', allergies: [], chronicConditions: ['Pregnancy'], problems: [{ id: 'prob_3', diagnosis: 'Pregnancy', status: 'Active', onset: '2024-05-01' }], lastVisit: '2024-10-15', status: 'Active', abha: null },
+    { id: 'p3', userId: 'usr_pat_3', name: 'John Smith', dob: '1978-11-30', gender: 'Male', phone: '555-0194', allergies: ['Penicillin'], chronicConditions: ['Hypertension'], problems: [{ id: 'prob_4', diagnosis: 'Essential Hypertension', status: 'Active', onset: '2019-11-20' }], lastVisit: '2024-10-10', status: 'Critical', abha: null }
   ],
+  
+  // --- ABDM CONSENT LEDGER ---
+  consents: [
+      {
+          id: 'consent_1',
+          patientId: 'p1',
+          purpose: 'Care Management',
+          hipId: 'Apollo_Hosp_Del',
+          hipName: 'Apollo Hospital Delhi',
+          status: 'GRANTED',
+          dateGranted: '2024-10-01',
+          expiresAt: '2025-10-01',
+          artifacts: ['OPD Consultation', 'Prescription']
+      }
+  ],
+
+  // --- EXTERNAL RECORDS (FETCHED VIA HIU) ---
+  externalRecords: [
+      {
+          id: 'ext_1',
+          patientId: 'p1',
+          source: 'Apollo Hospital Delhi',
+          type: 'Discharge Summary',
+          date: '2024-09-15',
+          summary: 'Patient treated for mild viral fever. Vitals stable.',
+          fetchedAt: '2024-10-02T14:00:00Z'
+      }
+  ],
+
   appointments: [
     { 
       id: 'apt_1', 
@@ -139,9 +174,13 @@ export const Repo = {
       labs: mem.labs.filter(l => l.patientId === patientId && active(l)),
       clinicalNotes: mem.notes.filter(n => n.patientId === patientId && active(n)), 
       documents: mem.documents.filter(d => d.patientId === patientId && active(d)),
+      // ABDM Data
+      externalRecords: mem.externalRecords.filter(r => r.patientId === patientId),
+      consents: mem.consents.filter(c => c.patientId === patientId)
     };
   },
 
+  // ... (Existing CRUD methods unchanged) ...
   createPrescription(input, doctorId) {
     const rx = { id: `rx_${randomUUID()}`, doctorId, createdAt: new Date().toISOString(), ...input };
     mem.prescriptions.unshift(rx);
@@ -169,12 +208,7 @@ export const Repo = {
   startAppointment(appointmentId) {
     const appt = mem.appointments.find(a => a.id === appointmentId);
     if (!appt) throw new Error("Appointment not found");
-    
-    // Strict State Transition: SCHEDULED -> IN_PROGRESS only
-    if (appt.status !== 'SCHEDULED') {
-        throw new Error(`Invalid state transition. Cannot start appointment from status: ${appt.status}`);
-    }
-    
+    if (appt.status !== 'SCHEDULED') throw new Error(`Invalid state transition.`);
     appt.status = 'IN_PROGRESS';
     appt.startedAt = new Date().toISOString();
     return appt;
@@ -183,15 +217,9 @@ export const Repo = {
   closeAppointment(appointmentId, summary) {
     const appt = mem.appointments.find(a => a.id === appointmentId);
     if (!appt) throw new Error("Appointment not found");
-    
-    // Strict State Transition: IN_PROGRESS -> COMPLETED only
-    if (appt.status !== 'IN_PROGRESS') {
-        throw new Error(`Invalid state transition. Cannot close appointment from status: ${appt.status}. Must be IN_PROGRESS.`);
-    }
-    
+    if (appt.status !== 'IN_PROGRESS') throw new Error(`Invalid state transition.`);
     appt.status = "COMPLETED";
     appt.summary = summary;
-    
     const note = {
       id: `note_${randomUUID()}`,
       patientId: appt.patientId,
@@ -201,7 +229,6 @@ export const Repo = {
       createdAt: new Date().toISOString()
     };
     mem.notes.unshift(note);
-
     return appt;
   },
   
@@ -213,7 +240,7 @@ export const Repo = {
   
   getAppointments(filters = {}) {
      return mem.appointments.filter(a => {
-        if (!active(a)) return false; // Filter deleted
+        if (!active(a)) return false;
         let match = true;
         if (filters.doctorId) match = match && a.doctorId === filters.doctorId;
         if (filters.patientId) match = match && a.patientId === filters.patientId;
@@ -238,7 +265,49 @@ export const Repo = {
     return doc;
   },
 
-  // Soft Delete Implementation
+  // --- ABDM Methods ---
+  linkAbha(patientId, abhaData) {
+      const patient = mem.patients.find(p => p.id === patientId);
+      if (patient) {
+          patient.abha = {
+              id: abhaData.id,
+              address: abhaData.address,
+              status: 'LINKED',
+              linkedAt: new Date().toISOString()
+          };
+          return patient.abha;
+      }
+      return null;
+  },
+
+  createConsent(patientId, consentData) {
+      const consent = {
+          id: `consent_${randomUUID()}`,
+          patientId,
+          status: 'GRANTED',
+          dateGranted: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 365*24*60*60*1000).toISOString(), // 1 year
+          ...consentData
+      };
+      mem.consents.unshift(consent);
+      return consent;
+  },
+
+  revokeConsent(consentId) {
+      const consent = mem.consents.find(c => c.id === consentId);
+      if (consent) {
+          consent.status = 'REVOKED';
+          return true;
+      }
+      return false;
+  },
+
+  addExternalRecord(record) {
+      const rec = { ...record, id: `ext_${randomUUID()}`, fetchedAt: new Date().toISOString() };
+      mem.externalRecords.unshift(rec);
+      return rec;
+  },
+
   softDelete(entityType, id, userId) {
       let collection;
       switch(entityType) {
@@ -247,7 +316,6 @@ export const Repo = {
           case 'document': collection = mem.documents; break;
           default: return false;
       }
-      
       const item = collection.find(i => i.id === id);
       if (item) {
           item.deletedAt = new Date().toISOString();
