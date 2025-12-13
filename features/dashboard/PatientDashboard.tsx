@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid 
 } from 'recharts';
-import { MessageSquare, Bell, FileText, Pill, Calendar, TestTube, ShieldCheck } from 'lucide-react';
+import { MessageSquare, Bell, FileText, Pill, Calendar, TestTube, ShieldCheck, AlertCircle } from 'lucide-react';
 import { GlassCard, Button } from '../../components/UI';
 import { MOCK_DOCTORS } from '../../utils/constants';
 import { generateHealthInsight } from '../../services/geminiService';
@@ -135,7 +135,7 @@ export const PatientDashboard: React.FC = () => {
                 <MessageSquare size={16} className="text-teal" />
                 <h3 className="font-bold text-white">Wysh AI Assistant</h3>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 mb-2">
                 <input 
                   type="text" 
                   value={aiPrompt}
@@ -146,6 +146,10 @@ export const PatientDashboard: React.FC = () => {
                 <Button onClick={handleAiQuery} className="!py-2 !px-4 text-sm">
                   {loadingAi ? 'Thinking...' : 'Ask AI'}
                 </Button>
+              </div>
+              <div className="flex items-start gap-1.5 text-[10px] text-text-secondary opacity-70">
+                  <AlertCircle size={10} className="mt-0.5" />
+                  <span>AI summaries are informational and do not replace clinical judgment. Consult a doctor for medical advice.</span>
               </div>
             </div>
             {aiResponse && (
