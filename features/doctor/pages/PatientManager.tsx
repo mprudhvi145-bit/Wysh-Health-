@@ -328,7 +328,7 @@ export const PatientManager: React.FC = () => {
                                 </div>
                              </div>
                              <div className="text-right">
-                                <Badge color={lab.status === 'Completed' ? 'teal' : 'purple'}>{lab.status}</Badge>
+                                <Badge color={lab.status === 'COMPLETED' ? 'teal' : 'purple'}>{lab.status}</Badge>
                                 <p className="text-[10px] text-text-secondary mt-2">{lab.dateOrdered}</p>
                              </div>
                           </div>

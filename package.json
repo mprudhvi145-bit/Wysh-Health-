@@ -25,7 +25,8 @@
     "@google/genai": "^1.33.0",
     "jsonwebtoken": "^9.0.3",
     "google-auth-library": "^10.5.0",
-    "multer": "^2.0.2"
+    "multer": "^2.0.2",
+    "crypto": "^1.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
