@@ -1,3 +1,4 @@
+
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -179,6 +180,7 @@ async function main() {
   await prisma.abdmConsent.create({
     data: {
       patientUserId: patientUser.id,
+      patientId: patient.id,
       consentId: "CONSENT-DEMO-" + Math.floor(Math.random() * 10000),
       purpose: "Care Management",
       dataScope: "Prescription,DiagnosticReport",
