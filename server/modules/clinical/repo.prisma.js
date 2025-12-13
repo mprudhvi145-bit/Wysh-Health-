@@ -1,20 +1,16 @@
 import { prisma } from "../../lib/prisma.js";
 
-// Global filter helper for Soft Deletes in inclusions
 const notDeleted = { where: { deletedAt: null } };
 
 export const PrismaRepo = {
   async searchPatients(query) {
     return prisma.patient.findMany({
       where: {
-        // Search by name on the related User model since Patient table is normalized
         user: {
             name: { contains: query, mode: "insensitive" }
         }
       },
-      include: {
-          user: true // Include user details
-      },
+      include: { user: true },
       take: 20,
     }).then(patients => patients.map(p => ({ 
         ...p, 
@@ -28,7 +24,7 @@ export const PrismaRepo = {
       where: { id: patientId },
       include: {
         user: true,
-        encounters: notDeleted, // Renamed from appointments
+        encounters: notDeleted,
         prescriptions: { 
             where: { deletedAt: null },
             include: { items: true }
@@ -42,15 +38,15 @@ export const PrismaRepo = {
         problems: true,
         allergies: true,
         vitals: { orderBy: { recordedAt: 'desc' }, take: 10 },
-        immunizations: true
+        consents: true,
+        externalRecords: true
       },
     });
     
     if (!patient) return {};
 
-    const { encounters, prescriptions, labOrders, notes, documents, user, problems, allergies, vitals, immunizations, ...patientData } = patient;
+    const { encounters, prescriptions, labOrders, notes, documents, user, problems, allergies, vitals, consents, externalRecords, ...patientData } = patient;
     
-    // Merge user data into patient for frontend compatibility
     const patientProfile = {
         ...patientData,
         name: user.name,
@@ -67,12 +63,14 @@ export const PrismaRepo = {
           ...e,
           date: e.scheduledAt.toISOString().split('T')[0],
           time: e.scheduledAt.toISOString().split('T')[1].substring(0,5),
-          doctorName: "Dr. Assigned" // In a real app, include Doctor relation
+          doctorName: "Dr. Assigned"
       })), 
       prescriptions,
       labOrders,
       clinicalNotes: notes,
-      documents
+      documents,
+      consents,
+      externalRecords
     };
   },
 
@@ -93,7 +91,7 @@ export const PrismaRepo = {
       data: {
         patientId: input.patientId,
         doctorId,
-        tests: input.tests, // Using String[] in Postgres
+        tests: input.tests,
         status: "ORDERED",
         priority: input.priority
       },
@@ -106,6 +104,11 @@ export const PrismaRepo = {
         patientId: input.patientId,
         doctorId,
         content: input.content,
+        // SOAP Fields
+        subjective: input.subjective,
+        objective: input.objective,
+        assessment: input.assessment,
+        plan: input.plan,
         shared: input.shared,
       },
     });
@@ -113,48 +116,39 @@ export const PrismaRepo = {
 
   async startAppointment(appointmentId) {
     return prisma.$transaction(async (tx) => {
-        // 1. Fetch current state
         const appt = await tx.encounter.findUnique({ where: { id: appointmentId } });
         if (!appt) throw new Error("Appointment not found");
-        
-        // 2. Enforce Strict Transition
         if (appt.status !== 'SCHEDULED') {
             throw new Error("Invalid State: Can only start SCHEDULED appointments.");
         }
-
-        // 3. Update
         return tx.encounter.update({
             where: { id: appointmentId },
-            data: { status: "IN_PROGRESS" },
+            data: { status: "IN_PROGRESS", startedAt: new Date() },
         });
     });
   },
 
   async closeAppointment(appointmentId, summary) {
     return prisma.$transaction(async (tx) => {
-      // 1. Fetch & Verify State
       const current = await tx.encounter.findUnique({ where: { id: appointmentId }});
       if (!current) throw new Error("Appointment not found");
-      
       if (current.status !== 'IN_PROGRESS') {
           throw new Error("Invalid State: Can only close IN_PROGRESS appointments.");
       }
 
-      // 2. Update Encounter
       const appt = await tx.encounter.update({
         where: { id: appointmentId },
-        data: { 
-            status: "COMPLETED",
-        },
+        data: { status: "COMPLETED", endedAt: new Date() },
       });
       
-      // 3. Create Summary Note (Atomically)
       await tx.clinicalNote.create({
         data: {
           patientId: appt.patientId,
           doctorId: appt.doctorId,
           encounterId: appt.id, 
           content: `Visit Closed. Diagnosis: ${summary.diagnosis}. Notes: ${summary.notes}`,
+          assessment: summary.diagnosis,
+          plan: summary.followUp,
           shared: true,
         },
       });
@@ -168,7 +162,6 @@ export const PrismaRepo = {
     if (filters.doctorId) where.doctorId = filters.doctorId;
     if (filters.patientId) where.patientId = filters.patientId;
 
-    // Use Encounter model
     return prisma.encounter.findMany({
       where,
       orderBy: { scheduledAt: 'asc' },
@@ -178,7 +171,6 @@ export const PrismaRepo = {
       }
     }).then(encounters => encounters.map(e => ({
         ...e,
-        // Map fields for frontend compatibility
         doctorName: e.doctor.user.name,
         scheduledAt: e.scheduledAt.toISOString()
     })));
@@ -201,9 +193,7 @@ export const PrismaRepo = {
       where: { id, deletedAt: null },
       include: { doctor: { include: { user: true } } }
     });
-    
     if (!e) return null;
-    
     return {
         ...e,
         doctorName: e.doctor.user.name,
@@ -231,7 +221,6 @@ export const PrismaRepo = {
     });
   },
 
-  // ABDM Helpers for Prisma Mode
   async linkAbha(userId, abhaData) {
       return prisma.user.update({
           where: { id: userId },
@@ -245,39 +234,37 @@ export const PrismaRepo = {
   },
 
   async createConsent(patientId, data) {
-      // Find user for patient
       const patient = await prisma.patient.findUnique({ where: { id: patientId } });
       if(!patient) throw new Error("Patient not found");
 
       return prisma.abdmConsent.create({
           data: {
               patientUserId: patient.userId,
+              patientId: patient.id,
               consentId: data.consentId || `cons_${Math.random()}`,
               purpose: data.purpose,
               dataScope: Array.isArray(data.dataTypes) ? data.dataTypes.join(',') : 'ALL',
               hipName: data.hipName,
-              status: 'GRANTED'
+              status: 'GRANTED',
+              dateGranted: new Date(),
+              validFrom: data.validFrom ? new Date(data.validFrom) : new Date(),
+              validTo: data.validTo ? new Date(data.validTo) : null
           }
       });
   },
 
-  // Generic Soft Delete
   async softDelete(model, id, userId) {
       const modelMap = {
           'prescription': 'prescription',
           'note': 'clinicalNote',
           'document': 'medicalDocument'
       };
-      
       const prismaModel = modelMap[model] || model;
-      
       if (!prisma[prismaModel]) throw new Error("Invalid model for deletion");
       
       return prisma[prismaModel].update({
           where: { id },
-          data: {
-              deletedAt: new Date(),
-          }
+          data: { deletedAt: new Date() }
       });
   }
 };
