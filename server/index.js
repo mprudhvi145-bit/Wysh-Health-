@@ -5,6 +5,7 @@ import { GoogleGenAI } from '@google/genai';
 import rateLimit from 'express-rate-limit';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
+import multer from 'multer';
 
 dotenv.config();
 
@@ -16,6 +17,12 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 if (!GOOGLE_CLIENT_ID) {
   console.warn("⚠️  WARNING: GOOGLE_CLIENT_ID is not set in server/.env. Google Auth will fail.");
 }
+
+// Multer setup for memory storage (files are processed in RAM then sent to Gemini)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
@@ -177,6 +184,7 @@ if (!apiKey) {
 
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
+// General AI Insight
 app.post('/api/ai/health-insight', authenticateToken, async (req, res) => {
   if (!ai) {
     return res.status(503).json({ error: 'AI Service not configured (Missing API Key).' });
@@ -187,10 +195,6 @@ app.post('/api/ai/health-insight', authenticateToken, async (req, res) => {
 
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ error: 'Invalid prompt provided.' });
-    }
-
-    if (prompt.length > 5000) {
-      return res.status(400).json({ error: 'Prompt exceeds maximum length.' });
     }
 
     const response = await ai.models.generateContent({
@@ -209,11 +213,66 @@ app.post('/api/ai/health-insight', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Gemini Proxy Error:', error);
-    const statusCode = error.status || 500;
-    const errorMessage = statusCode === 429 
-      ? 'System busy, please try again.' 
-      : 'Internal AI processing error.';
-    return res.status(statusCode).json({ error: errorMessage });
+    res.status(500).json({ error: 'AI processing error' });
+  }
+});
+
+// Document Extraction (Prescriptions/Labs)
+app.post('/api/ai/document-extract', authenticateToken, upload.single('file'), async (req, res) => {
+  if (!ai) {
+    return res.status(503).json({ error: 'AI Service not configured.' });
+  }
+
+  try {
+    const file = req.file;
+    const { documentType } = req.body;
+
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded.' });
+    }
+
+    const base64Data = file.buffer.toString('base64');
+    const mimeType = file.mimetype;
+
+    const prompt = `
+      Analyze this medical document (${documentType}).
+      Extract the following information in strict JSON format:
+      1. summary: A concise 1-sentence summary of the document.
+      2. diagnosis: An array of strings representing diagnoses found.
+      3. medications: An array of objects, each containing 'name', 'dosage', 'frequency', 'duration'.
+      4. labs: An array of objects, each containing 'test', 'value', 'unit', 'range', 'flag' (High/Low/Normal).
+      5. notes: Any additional doctor instructions or next steps.
+      6. confidence: A number between 0 and 1 indicating extraction confidence.
+
+      If a field is not present, return an empty array or null strings. Do not invent information.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          inlineData: {
+            mimeType: mimeType,
+            data: base64Data
+          }
+        },
+        { text: prompt }
+      ],
+      config: {
+        responseMimeType: 'application/json',
+      }
+    });
+
+    const extractedData = JSON.parse(response.text);
+
+    return res.json({
+      success: true,
+      data: extractedData
+    });
+
+  } catch (error) {
+    console.error('Document Extraction Error:', error);
+    res.status(500).json({ error: 'Failed to analyze document.' });
   }
 });
 

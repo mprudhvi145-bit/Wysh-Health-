@@ -1,5 +1,13 @@
+import { config } from '../config';
+import { authService } from './authService';
 
-// Mock Data Service for Patient Records
+// Determine backend URL
+const getBackendUrl = () => {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:3001/api';
+  }
+  return `${config.apiBaseUrl}`;
+};
 
 export interface HealthRecord {
   id: string;
@@ -10,6 +18,27 @@ export interface HealthRecord {
   url: string; // Mock URL or base64
   summary?: string;
   tags: string[];
+  extractedData?: ExtractedMedicalData;
+}
+
+export interface ExtractedMedicalData {
+  summary: string;
+  diagnosis: string[];
+  medications: {
+    name: string;
+    dosage: string;
+    frequency: string;
+    duration: string;
+  }[];
+  labs: {
+    test: string;
+    value: string;
+    unit: string;
+    range: string;
+    flag: 'High' | 'Low' | 'Normal';
+  }[];
+  notes: string;
+  confidence: number;
 }
 
 export interface Prescription {
@@ -81,6 +110,29 @@ export const patientService = {
   getRecords: async (patientId: string): Promise<HealthRecord[]> => {
     await delay(500);
     return MOCK_RECORDS; // In real app, filter by ID
+  },
+
+  // Calls the backend to extract data from a document
+  extractDocumentData: async (file: File, documentType: string): Promise<ExtractedMedicalData> => {
+    const token = authService.getToken();
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('documentType', documentType);
+
+    const response = await fetch(`${getBackendUrl()}/ai/document-extract`, {
+      method: 'POST',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : ''
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to extract document data');
+    }
+
+    const result = await response.json();
+    return result.data;
   },
 
   uploadRecord: async (record: Omit<HealthRecord, 'id'>): Promise<HealthRecord> => {
