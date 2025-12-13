@@ -126,6 +126,11 @@ export const PatientManager: React.FC = () => {
     }
   };
 
+  const handleCloseVisit = () => {
+      addNotification('success', 'Visit summary logged. Chart closed.');
+      setSelectedPatient(null);
+  };
+
   return (
     <div className="space-y-6 h-[calc(100vh-100px)] flex flex-col">
       {/* Top Bar */}
@@ -197,6 +202,9 @@ export const PatientManager: React.FC = () => {
                    </div>
                    
                    <div className="flex gap-2">
+                       <Button variant="outline" className="h-10 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10" onClick={handleCloseVisit}>
+                         End Visit
+                       </Button>
                       <Button variant={activeTab === 'notes' ? 'primary' : 'outline'} className="h-10 text-xs" icon={<StickyNote size={16}/>} onClick={() => setWritingNote(true)}>
                         Add Note
                       </Button>
@@ -210,13 +218,13 @@ export const PatientManager: React.FC = () => {
                 </div>
 
                 {/* Tabs */}
-                <div className="flex border-b border-white/10 px-6 bg-black/20">
+                <div className="flex border-b border-white/10 px-6 bg-black/20 overflow-x-auto">
                   {['overview', 'rx', 'labs', 'notes'].map(tab => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab as any)}
                       className={`
-                        px-6 py-4 text-sm font-medium border-b-2 transition-colors
+                        px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
                         ${activeTab === tab ? 'border-teal text-white' : 'border-transparent text-text-secondary hover:text-white'}
                       `}
                     >
@@ -339,12 +347,12 @@ export const PatientManager: React.FC = () => {
                            <div key={note.id} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all">
                               <div className="flex justify-between items-start mb-2">
                                  <div>
-                                    <h4 className="text-white font-bold text-sm">{note.subject}</h4>
+                                    <h4 className="text-white font-bold text-sm">{note.subject || 'Clinical Note'}</h4>
                                     <p className="text-xs text-text-secondary">{new Date(note.createdAt).toLocaleString()} • {note.type}</p>
                                  </div>
                                  {note.isPrivate && <Lock size={14} className="text-red-400" />}
                               </div>
-                              <p className="text-sm text-text-secondary mt-2 leading-relaxed">{note.content}</p>
+                              <p className="text-sm text-text-secondary mt-2 leading-relaxed whitespace-pre-wrap">{note.content}</p>
                            </div>
                         ))}
                      </div>
