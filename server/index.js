@@ -10,6 +10,7 @@ import multer from 'multer';
 // Import new modular routes
 import { clinicalRouter } from './modules/clinical/routes.js';
 import { authRequired } from './middleware/auth.js';
+import { AuditService } from './modules/audit/service.js';
 
 dotenv.config();
 
@@ -45,6 +46,12 @@ app.use('/api/', rateLimit({
 
 // --- MOUNT MODULAR ROUTES ---
 app.use('/api/clinical', clinicalRouter);
+
+// Debug Route for Audit Logs (Dev only)
+app.get('/api/audit/mine', authRequired, (req, res) => {
+  const logs = AuditService.listByActor(req.user.id);
+  res.json({ data: logs });
+});
 
 // --- LEGACY / AUTH / AI ROUTES (Keep in index.js for now or refactor later) ---
 
