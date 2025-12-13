@@ -31,6 +31,7 @@ const aiLimiter = rateLimit({
 
 // --- AI Service Setup ---
 
+// Initialize with API Key from environment variables (Server-side only)
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // --- Routes ---
@@ -59,6 +60,7 @@ app.post('/api/ai/health-insight', aiLimiter, async (req, res) => {
     });
 
     // Return structured response
+    // The SDK's generateContent returns a response object where .text is a getter
     return res.json({ 
       text: response.text,
       status: 'success'
