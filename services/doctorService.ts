@@ -1,3 +1,4 @@
+
 import { Doctor, Specialty } from '../types/doctor';
 import { Prescription } from '../services/patientService';
 import { config } from '../config';
@@ -47,6 +48,11 @@ export interface ClinicalPatient {
   prescriptions?: Prescription[];
   labOrders?: LabOrder[];
   clinicalNotes?: ClinicalNote[];
+  abha?: {
+    id: string;
+    address: string;
+    status: string;
+  };
 }
 
 export const doctorService = {

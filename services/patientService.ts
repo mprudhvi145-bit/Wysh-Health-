@@ -1,3 +1,4 @@
+
 import { config } from '../config';
 import { authService } from './authService';
 
@@ -11,13 +12,15 @@ const getBackendUrl = () => {
 export interface HealthRecord {
   id: string;
   patientId: string;
-  type: 'Lab Report' | 'Prescription' | 'Scan' | 'Vaccination';
+  type: 'Lab Report' | 'Prescription' | 'Scan' | 'Vaccination' | 'Discharge Summary';
   title: string;
   date: string;
   url: string;
   summary?: string;
   tags: string[];
   extractedData?: ExtractedMedicalData;
+  isExternal?: boolean;
+  source?: string;
 }
 
 export interface ExtractedMedicalData {
@@ -73,6 +76,18 @@ const MOCK_RECORDS: HealthRecord[] = [
     url: '#',
     summary: 'Hemoglobin slightly low (11.5 g/dL). WBC count normal.',
     tags: ['Blood', 'Routine']
+  },
+  {
+    id: 'rec_ext_1',
+    patientId: 'p1',
+    type: 'Discharge Summary',
+    title: 'Viral Fever Treatment',
+    date: '2024-09-15',
+    url: '#',
+    summary: 'Patient treated for mild viral fever. Vitals stable.',
+    tags: ['External', 'Apollo'],
+    isExternal: true,
+    source: 'Apollo Hospital Delhi'
   }
 ];
 

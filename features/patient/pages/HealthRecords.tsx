@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { GlassCard, Button, Badge, Modal, Input, Loader, Checkbox } from '../../../components/UI';
 import { patientService, HealthRecord, ExtractedMedicalData } from '../../../services/patientService';
-import { Upload, FileText, CheckCircle, Brain, Calendar, Camera, Pill, Activity, Save, Shield } from 'lucide-react';
+import { Upload, FileText, CheckCircle, Brain, Calendar, Camera, Pill, Activity, Save, Shield, Globe, Lock } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotification } from '../../../context/NotificationContext';
 
@@ -112,23 +113,28 @@ export const HealthRecords: React.FC = () => {
            </div>
         ) : (
           records.map(rec => (
-            <GlassCard key={rec.id} className="group relative overflow-hidden flex flex-col h-full hover:border-teal/40 transition-all">
+            <GlassCard key={rec.id} className={`group relative overflow-hidden flex flex-col h-full hover:border-opacity-50 transition-all ${rec.isExternal ? 'border-orange-500/30 bg-orange-500/5' : 'hover:border-teal/40'}`}>
               <div className="flex justify-between items-start mb-4">
-                <div className="p-3 bg-white/5 rounded-lg text-teal group-hover:bg-teal group-hover:text-white transition-colors">
-                  <FileText size={24} />
+                <div className={`p-3 rounded-lg transition-colors ${rec.isExternal ? 'bg-orange-500/10 text-orange-500' : 'bg-white/5 text-teal group-hover:bg-teal group-hover:text-white'}`}>
+                  {rec.isExternal ? <Globe size={24} /> : <FileText size={24} />}
                 </div>
-                <Badge color="purple">{rec.type}</Badge>
+                <Badge color={rec.isExternal ? 'purple' : 'purple'}>{rec.type}</Badge>
               </div>
               
               <h3 className="text-lg font-bold text-white mb-1 truncate">{rec.title}</h3>
               <div className="flex items-center gap-2 text-xs text-text-secondary mb-4">
                 <Calendar size={12} /> {rec.date}
+                {rec.isExternal && (
+                  <span className="flex items-center gap-1 text-orange-400 font-medium">
+                     • From {rec.source}
+                  </span>
+                )}
               </div>
 
               {rec.summary && (
                 <div className="bg-white/5 p-3 rounded-lg border border-white/5 mb-4 flex-grow">
                   <p className="text-xs text-teal font-bold mb-1 flex items-center gap-1">
-                    <Brain size={12} /> AI Assisted Summary
+                    <Brain size={12} /> {rec.isExternal ? 'Import Summary' : 'AI Assisted Summary'}
                   </p>
                   <p className="text-xs text-text-secondary line-clamp-3">{rec.summary}</p>
                 </div>
@@ -144,7 +150,13 @@ export const HealthRecords: React.FC = () => {
               </div>
 
               <div className="mt-auto flex gap-2">
-                <Button variant="outline" className="flex-1 text-xs justify-center">View</Button>
+                {rec.isExternal ? (
+                    <div className="w-full flex items-center justify-center gap-2 p-2 bg-orange-500/10 rounded border border-orange-500/20 text-xs text-orange-400">
+                        <Lock size={12} /> External record — cannot be edited
+                    </div>
+                ) : (
+                    <Button variant="outline" className="flex-1 text-xs justify-center">View</Button>
+                )}
               </div>
             </GlassCard>
           ))

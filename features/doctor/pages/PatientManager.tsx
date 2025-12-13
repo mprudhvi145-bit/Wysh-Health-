@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { GlassCard, Button, Input, Loader } from '../../../components/UI';
 import { clinicalService } from '../services/clinicalService';
 import { ClinicalProvider } from '../context/ClinicalContext';
 import { useClinical } from '../hooks/useClinical';
-import { Search, UserPlus, Activity, ArrowRight } from 'lucide-react';
+import { Search, UserPlus, Activity, ArrowRight, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotification } from '../../../context/NotificationContext';
 import { ClinicalPatient } from '../../../services/doctorService';
@@ -115,11 +116,22 @@ const PatientManagerContent: React.FC = () => {
                      </div>
                      <div>
                        <h2 className="text-2xl font-bold text-white">{patient.name}</h2>
-                       <div className="flex flex-wrap gap-4 text-sm text-text-secondary mt-1">
+                       <div className="flex flex-wrap gap-4 text-sm text-text-secondary mt-1 mb-2">
                           <span className="flex items-center gap-1"><Activity size={14}/> ID: {patient.id}</span>
                           <span>Age: {patient.age || 'N/A'}</span>
                           <span>Last Visit: {patient.lastVisit}</span>
                        </div>
+                       
+                       {/* ABHA Status Indicator */}
+                       {patient.abha && patient.abha.status === 'LINKED' ? (
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-[10px] text-orange-400 font-bold">
+                             <ShieldCheck size={12} /> ABHA Linked: {patient.abha.address}
+                          </div>
+                       ) : (
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-text-secondary font-bold">
+                             <ShieldAlert size={12} /> ABHA Missing
+                          </div>
+                       )}
                      </div>
                    </div>
                    

@@ -1,3 +1,4 @@
+
 import { api } from './api';
 
 export interface AbhaProfile {
@@ -14,6 +15,9 @@ export interface ConsentArtifact {
     status: 'GRANTED' | 'REVOKED' | 'EXPIRED';
     dateGranted: string;
     expiresAt: string;
+    scope?: string[];
+    dateFrom?: string;
+    dateTo?: string;
 }
 
 export const abdmService = {
@@ -29,7 +33,13 @@ export const abdmService = {
         return api.get<ConsentArtifact[]>("/abdm/consents");
     },
 
-    createConsent: (payload: { hipName: string, purpose: string }) => {
+    createConsent: (payload: { 
+        hipName: string; 
+        purpose: string; 
+        scope: string[]; 
+        dateFrom: string; 
+        dateTo: string; 
+    }) => {
         return api.post("/abdm/consents", payload);
     },
 
