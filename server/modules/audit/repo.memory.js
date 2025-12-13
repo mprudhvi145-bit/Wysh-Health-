@@ -16,7 +16,8 @@ export const AuditRepo = {
         type: "AUDIT_EVENT",
         actorId: record.actorId,
         action: record.action,
-        resource: record.resource
+        resource: record.resource,
+        metadata: record.metadata || {}
     });
   },
 

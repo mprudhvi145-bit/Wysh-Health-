@@ -70,6 +70,10 @@ export const mem = {
       }
   ],
 
+  // --- ABDM OPERATIONAL LOGS ---
+  abdmRequests: [],
+  consentUsage: [],
+
   // --- EXTERNAL RECORDS (FETCHED VIA HIU) ---
   externalRecords: [
       {
@@ -275,6 +279,16 @@ export const Repo = {
               status: 'LINKED',
               linkedAt: new Date().toISOString()
           };
+          
+          // Log operational request
+          mem.abdmRequests.push({
+              id: `req_${randomUUID()}`,
+              requestType: 'LINK',
+              patientUserId: patientId,
+              status: 'ACKED',
+              createdAt: new Date().toISOString()
+          });
+          
           return patient.abha;
       }
       return null;
@@ -290,7 +304,27 @@ export const Repo = {
           ...consentData
       };
       mem.consents.unshift(consent);
+      
+      // Log operational request
+      mem.abdmRequests.push({
+          id: `req_${randomUUID()}`,
+          requestType: 'CONSENT',
+          patientUserId: patientId,
+          status: 'ACKED',
+          requestPayload: consentData,
+          createdAt: new Date().toISOString()
+      });
+      
       return consent;
+  },
+
+  logConsentUsage(consentId, action) {
+      mem.consentUsage.push({
+          id: `usage_${randomUUID()}`,
+          consentId,
+          ...action,
+          accessedAt: new Date().toISOString()
+      });
   },
 
   revokeConsent(consentId) {
