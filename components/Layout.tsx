@@ -25,6 +25,32 @@ const Navbar: React.FC = () => {
     setIsOpen(false);
   };
 
+  // Dynamic Nav Items based on Role
+  const getNavItems = () => {
+    if (!isAuthenticated) return NAV_ITEMS;
+    
+    if (user?.role === 'patient') {
+      return [
+        { label: 'Dashboard', path: '/dashboard' },
+        { label: 'Records', path: '/dashboard/records' },
+        { label: 'Find Doctor', path: '/doctors' },
+        { label: 'AI Health', path: '/ai-health' },
+      ];
+    }
+
+    if (user?.role === 'doctor') {
+      return [
+        { label: 'Console', path: '/dashboard' },
+        { label: 'Patients', path: '/doctor/patients' },
+        { label: 'Schedule', path: '/doctor/schedule' },
+      ];
+    }
+    
+    return NAV_ITEMS;
+  };
+
+  const navLinks = getNavItems();
+
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-surgical/90 backdrop-blur-lg border-b border-white/5' : 'bg-transparent'}`}>
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
@@ -39,7 +65,7 @@ const Navbar: React.FC = () => {
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8">
-          {NAV_ITEMS.map((item) => (
+          {navLinks.map((item) => (
             <NavLink 
               key={item.path} 
               to={item.path}
@@ -56,18 +82,17 @@ const Navbar: React.FC = () => {
                         <p className="text-white text-sm font-bold leading-none">{user?.name}</p>
                         <p className="text-text-secondary text-xs uppercase tracking-wider">{user?.role}</p>
                     </div>
-                    <div className="w-9 h-9 rounded-full bg-teal/20 border border-teal text-teal flex items-center justify-center">
+                    <div className="w-9 h-9 rounded-full bg-teal/20 border border-teal text-teal flex items-center justify-center overflow-hidden">
                         {user?.avatar ? (
-                             <img src={user.avatar} alt="User" className="w-full h-full rounded-full object-cover" />
+                             <img src={user.avatar} alt="User" className="w-full h-full object-cover" />
                         ) : (
                              <span className="font-bold">{user?.name.charAt(0)}</span>
                         )}
                     </div>
                     
-                    {/* Simple Logout Dropdown for Demo */}
                     <button 
                         onClick={handleLogout}
-                        className="absolute top-10 right-0 w-32 bg-surgical border border-white/10 rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto"
+                        className="absolute top-10 right-0 w-32 bg-surgical border border-white/10 rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto shadow-xl"
                     >
                         <div className="flex items-center gap-2 text-red-400 text-sm hover:bg-white/5 p-2 rounded">
                             <LogOut size={14} /> Logout
@@ -93,8 +118,8 @@ const Navbar: React.FC = () => {
 
       {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden absolute top-20 left-0 right-0 bg-surgical border-b border-white/10 p-6 flex flex-col gap-4 animate-slideDown shadow-2xl">
-          {NAV_ITEMS.map((item) => (
+        <div className="md:hidden absolute top-20 left-0 right-0 bg-surgical border-b border-white/10 p-6 flex flex-col gap-4 animate-slideDown shadow-2xl h-screen z-50">
+          {navLinks.map((item) => (
             <NavLink 
               key={item.path} 
               to={item.path}
@@ -109,8 +134,8 @@ const Navbar: React.FC = () => {
               {isAuthenticated ? (
                   <>
                     <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
-                        <div className="w-8 h-8 rounded-full bg-teal/20 border border-teal flex items-center justify-center text-teal">
-                             {user?.name.charAt(0)}
+                        <div className="w-8 h-8 rounded-full bg-teal/20 border border-teal flex items-center justify-center text-teal overflow-hidden">
+                             {user?.avatar ? <img src={user.avatar} className="w-full h-full object-cover"/> : user?.name.charAt(0)}
                         </div>
                         <div>
                              <p className="text-white font-bold">{user?.name}</p>

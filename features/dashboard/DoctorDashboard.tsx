@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, Calendar, Activity, CheckCircle, Clock, Video, Power 
+  Users, Calendar, Activity, Clock, Video, Power, ClipboardList 
 } from 'lucide-react';
 import { GlassCard, Button, Badge } from '../../components/UI';
 import { useAuth } from '../../context/AuthContext';
@@ -9,9 +9,11 @@ import { appointmentService } from '../../services/appointmentService';
 import { doctorService } from '../../services/doctorService';
 import { Appointment } from '../../types/appointment';
 import { MOCK_PATIENTS } from '../../utils/constants';
+import { useNavigate } from 'react-router-dom';
 
 export const DoctorDashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isOnline, setIsOnline] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -35,11 +37,7 @@ export const DoctorDashboard: React.FC = () => {
       }
   };
 
-  const todayAppointments = appointments.filter(a => {
-      const today = new Date().toISOString().split('T')[0];
-      // For demo, since we generate slots 7 days out, assume we want to see all for now or mock it
-      return true; // Return all for demo visibility
-  });
+  const todayAppointments = appointments.filter(a => true); // Show all for demo
 
   return (
     <div className="space-y-6">
@@ -100,6 +98,32 @@ export const DoctorDashboard: React.FC = () => {
              </GlassCard>
         </div>
 
+        {/* Clinical Actions CTA */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+           <div 
+             className="bg-gradient-to-r from-teal/20 to-teal/5 border border-teal/20 rounded-2xl p-6 flex justify-between items-center cursor-pointer hover:border-teal/50 transition-colors"
+             onClick={() => navigate('/doctor/patients')}
+           >
+             <div>
+               <h3 className="text-xl font-bold text-white mb-1">Clinical Console</h3>
+               <p className="text-text-secondary text-sm">Manage patients, write prescriptions, and view labs.</p>
+             </div>
+             <div className="bg-teal text-white p-3 rounded-full">
+               <ClipboardList size={24} />
+             </div>
+           </div>
+           
+           <div className="bg-gradient-to-r from-purple/20 to-purple/5 border border-purple/20 rounded-2xl p-6 flex justify-between items-center">
+             <div>
+               <h3 className="text-xl font-bold text-white mb-1">AI Research Hub</h3>
+               <p className="text-text-secondary text-sm">Analyze complex cases with Gemini Medical Models.</p>
+             </div>
+             <div className="bg-purple text-white p-3 rounded-full">
+               <Activity size={24} />
+             </div>
+           </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left: Schedule */}
             <div className="lg:col-span-2 space-y-6">
@@ -119,7 +143,7 @@ export const DoctorDashboard: React.FC = () => {
                                         <p className="text-xs text-text-secondary">Today</p>
                                     </div>
                                     <div className="w-10 h-10 rounded-full bg-purple/20 flex items-center justify-center text-purple font-bold">
-                                        {apt.doctorName.charAt(0)} {/* Using DoctorName for demo, ideally PatientName */}
+                                        {apt.doctorName.charAt(0)}
                                     </div>
                                     <div className="flex-1">
                                         <h4 className="text-white font-bold text-sm">Patient ID: {apt.patientId}</h4>
@@ -140,7 +164,7 @@ export const DoctorDashboard: React.FC = () => {
                 </GlassCard>
             </div>
 
-            {/* Right: Patient List */}
+            {/* Right: Patient List Summary */}
             <GlassCard>
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-white font-bold">Recent Patients</h3>
@@ -168,7 +192,13 @@ export const DoctorDashboard: React.FC = () => {
                         </div>
                     ))}
                 </div>
-                <Button variant="outline" className="w-full mt-6 text-sm">View All Patients</Button>
+                <Button 
+                    variant="outline" 
+                    className="w-full mt-6 text-sm" 
+                    onClick={() => navigate('/doctor/patients')}
+                >
+                    View All Patients
+                </Button>
             </GlassCard>
         </div>
     </div>

@@ -3,17 +3,16 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { GlassCard, Button, Input } from '../../components/UI';
-import { Activity, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
+import { Activity, Lock, Mail, ArrowRight, AlertCircle, Globe } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login, isLoading } = useAuth();
+  const { login, loginWithGoogle, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Redirect to where they wanted to go, or dashboard by default
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,9 +27,17 @@ export const Login: React.FC = () => {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      await loginWithGoogle();
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError('Google authentication failed.');
+    }
+  };
+
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 relative">
-      {/* Background decoration */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-teal/5 rounded-full blur-[100px] pointer-events-none" />
 
       <GlassCard className="w-full max-w-md p-8 relative z-10 border-teal/20">
@@ -89,7 +96,27 @@ export const Login: React.FC = () => {
             {isLoading ? 'Authenticating...' : 'Secure Login'}
           </Button>
 
-          <div className="text-center pt-4 border-t border-white/5">
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-white/10" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-[#0D0F12] px-2 text-text-secondary">Or continue with</span>
+            </div>
+          </div>
+
+          <Button 
+            type="button" 
+            variant="outline"
+            className="w-full justify-center bg-white/5 hover:bg-white/10" 
+            disabled={isLoading}
+            onClick={handleGoogleLogin}
+            icon={<Globe size={16} />}
+          >
+            Sign in with Google
+          </Button>
+
+          <div className="text-center pt-4 border-t border-white/5 mt-6">
             <p className="text-text-secondary text-sm">
               New to Wysh?{' '}
               <Link to="/signup" className="text-teal hover:text-white transition-colors font-medium">

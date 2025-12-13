@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid 
 } from 'recharts';
-import { MessageSquare, Bell } from 'lucide-react';
+import { MessageSquare, Bell, FileText, Pill, Calendar } from 'lucide-react';
 import { GlassCard, Button } from '../../components/UI';
 import { MOCK_DOCTORS } from '../../utils/constants';
 import { generateHealthInsight } from '../../services/geminiService';
@@ -63,10 +63,56 @@ export const PatientDashboard: React.FC = () => {
               <Bell className="text-text-secondary hover:text-white cursor-pointer" />
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
             </div>
-            <div className="w-10 h-10 rounded-full bg-teal/20 border border-teal flex items-center justify-center text-teal font-bold uppercase">
-              {user?.name.substring(0, 2) || 'US'}
+            <div className="w-10 h-10 rounded-full bg-teal/20 border border-teal flex items-center justify-center text-teal font-bold uppercase overflow-hidden">
+               {user?.avatar ? <img src={user.avatar} className="w-full h-full object-cover"/> : user?.name.substring(0, 2)}
             </div>
           </div>
+        </div>
+
+        {/* Action Shortcuts */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+           <GlassCard 
+             className="flex flex-col items-center justify-center p-4 cursor-pointer hover:bg-white/5 transition-colors group"
+             onClick={() => navigate('/dashboard/records')}
+             hoverEffect={false}
+           >
+             <div className="p-3 bg-purple/10 rounded-full text-purple mb-2 group-hover:scale-110 transition-transform">
+               <FileText size={24} />
+             </div>
+             <span className="text-sm font-bold text-white">Records</span>
+           </GlassCard>
+           
+           <GlassCard 
+             className="flex flex-col items-center justify-center p-4 cursor-pointer hover:bg-white/5 transition-colors group"
+             onClick={() => navigate('/doctors')}
+             hoverEffect={false}
+           >
+             <div className="p-3 bg-teal/10 rounded-full text-teal mb-2 group-hover:scale-110 transition-transform">
+               <Calendar size={24} />
+             </div>
+             <span className="text-sm font-bold text-white">Book Visit</span>
+           </GlassCard>
+
+           <GlassCard 
+             className="flex flex-col items-center justify-center p-4 cursor-pointer hover:bg-white/5 transition-colors group"
+             onClick={() => navigate('/ai-health')}
+             hoverEffect={false}
+           >
+             <div className="p-3 bg-blue-500/10 rounded-full text-blue-400 mb-2 group-hover:scale-110 transition-transform">
+               <MessageSquare size={24} />
+             </div>
+             <span className="text-sm font-bold text-white">AI Consult</span>
+           </GlassCard>
+
+           <GlassCard 
+             className="flex flex-col items-center justify-center p-4 cursor-pointer hover:bg-white/5 transition-colors group"
+             hoverEffect={false}
+           >
+             <div className="p-3 bg-yellow-500/10 rounded-full text-yellow-400 mb-2 group-hover:scale-110 transition-transform">
+               <Pill size={24} />
+             </div>
+             <span className="text-sm font-bold text-white">Meds</span>
+           </GlassCard>
         </div>
 
         {/* Wysh AI Assistant */}
@@ -98,22 +144,6 @@ export const PatientDashboard: React.FC = () => {
             )}
           </div>
         </GlassCard>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[
-            { label: 'Upcoming Vitals', value: 'Normal', change: 'Stable', color: 'teal' },
-            { label: 'Appointments', value: appointments.length.toString(), change: 'Upcoming', color: 'purple' },
-            { label: 'Messages', value: '3', change: 'Unread', color: 'blue' },
-            { label: 'Insurance', value: 'Active', change: 'Premium', color: 'green' },
-          ].map((stat, i) => (
-            <GlassCard key={i} className="py-4">
-              <p className="text-text-secondary text-xs uppercase tracking-wider">{stat.label}</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{stat.value}</h3>
-              <span className={`text-xs ${stat.color === 'teal' ? 'text-teal' : 'text-purple-400'}`}>{stat.change}</span>
-            </GlassCard>
-          ))}
-        </div>
 
         {/* Main Content Area */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -171,20 +201,6 @@ export const PatientDashboard: React.FC = () => {
               
               <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-[200px] max-h-[500px]">
                 <AppointmentList appointments={appointments} loading={loadingAppointments} />
-              </div>
-
-              <div className="mt-6 pt-6 border-t border-white/10 flex-shrink-0">
-                <h3 className="text-white font-bold mb-4">Pending Actions</h3>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3 text-sm text-text-secondary">
-                    <div className="mt-1 w-2 h-2 rounded-full bg-teal flex-shrink-0" />
-                    <p>Complete pre-visit questionnaire for Dr. Sarah</p>
-                  </div>
-                   <div className="flex items-start gap-3 text-sm text-text-secondary">
-                    <div className="mt-1 w-2 h-2 rounded-full bg-purple flex-shrink-0" />
-                    <p>Upload insurance card updated photo</p>
-                  </div>
-                </div>
               </div>
             </GlassCard>
           </div>

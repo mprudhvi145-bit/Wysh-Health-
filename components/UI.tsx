@@ -6,14 +6,17 @@ export const GlassCard: React.FC<{
   className?: string; 
   hoverEffect?: boolean;
   style?: React.CSSProperties;
+  onClick?: () => void;
 }> = ({ 
   children, 
   className = '', 
   hoverEffect = true,
-  style
+  style,
+  onClick
 }) => {
   return (
     <div 
+      onClick={onClick}
       className={`
       glass-panel rounded-2xl p-6 transition-all duration-300 relative overflow-hidden group
       ${hoverEffect ? 'hover:-translate-y-1' : ''}

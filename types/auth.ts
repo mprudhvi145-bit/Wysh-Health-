@@ -7,6 +7,10 @@ export interface User {
   email: string;
   role: Role;
   avatar?: string;
+  linkedGoogle?: boolean;
+  phone?: string;
+  specialty?: string; // For doctors
+  licenseNumber?: string; // For doctors
 }
 
 export interface AuthResponse {
@@ -16,7 +20,7 @@ export interface AuthResponse {
 
 export interface LoginCredentials {
   email: string;
-  password?: string; // Optional for demo simplified login if needed
+  password?: string;
 }
 
 export interface SignupCredentials {
@@ -31,6 +35,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   register: (credentials: SignupCredentials) => Promise<void>;
   logout: () => void;
 }
