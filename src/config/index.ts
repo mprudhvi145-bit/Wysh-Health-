@@ -9,12 +9,12 @@ export const config = {
   
   environment: env.MODE || 'development',
   
-  // Explicit Data Mode Switch - Fixes 2.1 "Mixed Data Paths"
-  // If VITE_USE_MOCK is set, we force mock services. Otherwise, we try API.
+  // Critical: Runtime Data Source Switch
+  // 'MOCK': Forces services to return static/browser-storage data (Offline Dev)
+  // 'API': Forces services to call the backend (Production/Integration)
   dataMode: (env.VITE_USE_MOCK === 'true' ? 'MOCK' : 'API') as DataMode,
   
   timeout: 10000,
   
-  // Google Client ID must be provided at build time for production
   googleClientId: env.VITE_GOOGLE_CLIENT_ID || 'your_google_client_id_here',
 };

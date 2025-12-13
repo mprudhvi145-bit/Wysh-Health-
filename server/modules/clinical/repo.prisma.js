@@ -275,6 +275,21 @@ export const PrismaRepo = {
       });
   },
 
+  // State Transition: Revoke Consent
+  async revokeConsent(consentId) {
+      const consent = await prisma.abdmConsent.findUnique({ where: { id: consentId } });
+      if (!consent) throw new Error("Consent not found");
+      
+      if (consent.status !== 'GRANTED') {
+          throw new Error("Cannot revoke consent that is not in GRANTED state.");
+      }
+
+      return prisma.abdmConsent.update({
+          where: { id: consentId },
+          data: { status: 'REVOKED' }
+      });
+  },
+
   async softDelete(model, id, userId) {
       const modelMap = {
           'prescription': 'prescription',
