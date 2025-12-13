@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard, Button, Badge, Modal, Input, Loader, Checkbox } from '../../../components/UI';
 import { patientService, HealthRecord, ExtractedMedicalData } from '../../../services/patientService';
-import { Upload, FileText, X, CheckCircle, Brain, Calendar, ArrowRight, Camera, Pill, Activity, AlertTriangle, Save } from 'lucide-react';
+import { Upload, FileText, CheckCircle, Brain, Calendar, Camera, Pill, Activity, Save } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 
 export const HealthRecords: React.FC = () => {
