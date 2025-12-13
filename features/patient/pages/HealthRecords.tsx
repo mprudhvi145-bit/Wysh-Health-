@@ -3,9 +3,11 @@ import { GlassCard, Button, Badge, Modal, Input, Loader, Checkbox } from '../../
 import { patientService, HealthRecord, ExtractedMedicalData } from '../../../services/patientService';
 import { Upload, FileText, CheckCircle, Brain, Calendar, Camera, Pill, Activity, Save } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
+import { useNotification } from '../../../context/NotificationContext';
 
 export const HealthRecords: React.FC = () => {
   const { user } = useAuth();
+  const { addNotification } = useNotification();
   const [records, setRecords] = useState<HealthRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -45,9 +47,10 @@ export const HealthRecords: React.FC = () => {
     try {
       const data = await patientService.extractDocumentData(file, docType);
       setExtractedData(data);
+      addNotification('success', 'Document analysis complete');
     } catch (error) {
       console.error("Extraction failed", error);
-      // In a real app, use toast here
+      addNotification('error', 'Failed to analyze document. Please try again.');
     } finally {
       setAnalyzing(false);
     }
@@ -72,6 +75,7 @@ export const HealthRecords: React.FC = () => {
       const updated = await patientService.getRecords(user.id);
       setRecords(updated);
       setIsUploadModalOpen(false);
+      addNotification('success', 'Health record saved securely');
       
       // Reset State
       setFile(null);
@@ -79,6 +83,7 @@ export const HealthRecords: React.FC = () => {
       setConsent(false);
     } catch (err) {
       console.error(err);
+      addNotification('error', 'Failed to save record.');
     } finally {
       setSaving(false);
     }

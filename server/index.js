@@ -27,18 +27,36 @@ const upload = multer({
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // --- In-Memory Mock Database ---
-// In a real app, use MongoDB/PostgreSQL
 const users = [
   {
     id: 'usr_demo_doc',
-    name: 'Dr. Demo',
+    name: 'Dr. Sarah Chen',
     email: 'doctor@wysh.com',
-    password: 'password', // In prod: bcrypt hash
+    password: 'password', 
     role: 'doctor',
-    avatar: 'https://ui-avatars.com/api/?name=Dr+Demo&background=8763FF&color=fff',
+    avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300',
     specialty: 'Cardiology'
+  },
+  {
+    id: 'usr_demo_patient',
+    name: 'Alex Doe',
+    email: 'alex@example.com',
+    password: 'password',
+    role: 'patient',
+    avatar: 'https://ui-avatars.com/api/?name=Alex+Doe&background=random'
   }
 ];
+
+const patients = [
+  { id: 'p1', userId: 'usr_demo_patient', name: 'Alex Doe', age: 34, bloodType: 'O+', allergies: ['Peanuts'], chronicConditions: ['Arrhythmia'], lastVisit: '2024-10-12' },
+  { id: 'p2', userId: 'usr_p2', name: 'Maria Garcia', age: 29, bloodType: 'A-', allergies: [], chronicConditions: ['Pregnancy'], lastVisit: '2024-10-15' },
+  { id: 'p3', userId: 'usr_p3', name: 'John Smith', age: 45, bloodType: 'B+', allergies: ['Penicillin'], chronicConditions: ['Hypertension'], lastVisit: '2024-10-10' },
+];
+
+const clinicalRecords = {
+  prescriptions: [],
+  labOrders: []
+};
 
 // --- Middleware ---
 
@@ -74,8 +92,6 @@ const authenticateToken = (req, res, next) => {
 };
 
 // --- Auth Routes ---
-
-// Helper to generate JWT
 const generateToken = (user) => {
   return jwt.sign(
     { id: user.id, email: user.email, role: user.role, name: user.name },
@@ -84,119 +100,140 @@ const generateToken = (user) => {
   );
 };
 
-// 1. Google Sign-In
 app.post('/api/auth/google', async (req, res) => {
   try {
-    console.log("Google token received");
     const { token, role = 'patient' } = req.body;
-    
-    // Verify Google Token
     const ticket = await googleClient.verifyIdToken({
         idToken: token,
         audience: GOOGLE_CLIENT_ID,
     });
     const payload = ticket.getPayload();
     const { email, name, picture, sub: googleId } = payload;
-
-    // Check if user exists
     let user = users.find(u => u.email === email);
 
     if (!user) {
-      // Register new user
       user = {
         id: `usr_${Math.random().toString(36).substr(2, 9)}`,
         name,
         email,
-        role, // Default to patient or whatever was passed
+        role,
         avatar: picture,
         googleId,
         linkedGoogle: true
       };
       users.push(user);
-    } else if (!user.linkedGoogle) {
-      // Link existing account
-      user.linkedGoogle = true;
-      user.googleId = googleId;
-      if (!user.avatar) user.avatar = picture;
     }
-
     const authToken = generateToken(user);
     res.json({ user, token: authToken });
-
   } catch (error) {
     console.error('Google Auth Error:', error);
     res.status(401).json({ error: 'Invalid Google Token' });
   }
 });
 
-// 2. Email/Password Login (Mock Credentials)
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
-  
-  // Find user (Mock password check - use bcrypt in prod)
-  const user = users.find(u => u.email === email && (u.password === password || u.password === undefined)); // undefined allow mock users created via register
-
-  if (!user) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-
+  const user = users.find(u => u.email === email && (u.password === password || u.password === undefined));
+  if (!user) return res.status(401).json({ error: 'Invalid credentials' });
   const token = generateToken(user);
   res.json({ user, token });
 });
 
-// 3. Register
 app.post('/api/auth/register', (req, res) => {
   const { name, email, password, role } = req.body;
-
-  if (users.find(u => u.email === email)) {
-    return res.status(400).json({ error: 'User already exists' });
-  }
-
+  if (users.find(u => u.email === email)) return res.status(400).json({ error: 'User already exists' });
   const newUser = {
     id: `usr_${Math.random().toString(36).substr(2, 9)}`,
     name,
     email,
-    password, // Hash this in prod!
+    password, 
     role: role || 'patient',
     avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff`
   };
-
   users.push(newUser);
   const token = generateToken(newUser);
   res.status(201).json({ user: newUser, token });
 });
 
-// 4. Get Current User (Session Restore)
 app.get('/api/auth/me', authenticateToken, (req, res) => {
-  // Return fresh data from DB using ID from token
   const user = users.find(u => u.id === req.user.id);
   if (!user) return res.sendStatus(404);
   res.json({ user });
 });
 
+// --- Clinical Routes (Doctor Workflows) ---
+
+// Get Patient List
+app.get('/api/clinical/patients', authenticateToken, (req, res) => {
+  const { query } = req.query;
+  let results = patients;
+  if (query) {
+    const q = query.toLowerCase();
+    results = patients.filter(p => p.name.toLowerCase().includes(q));
+  }
+  res.json({ data: results });
+});
+
+// Get Single Patient Details with History
+app.get('/api/clinical/patients/:id', authenticateToken, (req, res) => {
+  const patient = patients.find(p => p.id === req.params.id);
+  if (!patient) return res.status(404).json({ error: 'Patient not found' });
+  
+  // Attach clinical history
+  const patientRx = clinicalRecords.prescriptions.filter(rx => rx.patientId === patient.id);
+  const patientLabs = clinicalRecords.labOrders.filter(lab => lab.patientId === patient.id);
+  
+  res.json({ data: { ...patient, prescriptions: patientRx, labOrders: patientLabs } });
+});
+
+// Create Prescription
+app.post('/api/clinical/prescriptions', authenticateToken, (req, res) => {
+  const { patientId, medications, notes } = req.body;
+  
+  const newRx = {
+    id: `rx_${Math.random().toString(36).substr(2, 9)}`,
+    patientId,
+    doctorId: req.user.id,
+    doctorName: req.user.name,
+    medications,
+    notes,
+    date: new Date().toISOString().split('T')[0],
+    status: 'Active'
+  };
+  
+  clinicalRecords.prescriptions.unshift(newRx);
+  res.status(201).json({ data: newRx });
+});
+
+// Order Lab Test
+app.post('/api/clinical/labs', authenticateToken, (req, res) => {
+  const { patientId, testName, category, priority } = req.body;
+
+  const newLab = {
+    id: `lab_${Math.random().toString(36).substr(2, 9)}`,
+    patientId,
+    doctorId: req.user.id,
+    testName,
+    category,
+    priority,
+    status: 'Ordered',
+    dateOrdered: new Date().toISOString().split('T')[0]
+  };
+
+  clinicalRecords.labOrders.unshift(newLab);
+  res.status(201).json({ data: newLab });
+});
+
+
 // --- AI Service ---
 
 const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-
-if (!apiKey) {
-  console.error("⚠️  FATAL: GEMINI_API_KEY is not set. Please check server/.env file.");
-}
-
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
-// General AI Insight
 app.post('/api/ai/health-insight', authenticateToken, async (req, res) => {
-  if (!ai) {
-    return res.status(503).json({ error: 'AI Service not configured (Missing API Key).' });
-  }
-
+  if (!ai) return res.status(503).json({ error: 'AI Service not configured.' });
   try {
     const { prompt, systemInstruction } = req.body;
-
-    if (!prompt || typeof prompt !== 'string') {
-      return res.status(400).json({ error: 'Invalid prompt provided.' });
-    }
-
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -205,31 +242,19 @@ app.post('/api/ai/health-insight', authenticateToken, async (req, res) => {
         maxOutputTokens: 500,
       }
     });
-
-    return res.json({ 
-      text: response.text,
-      status: 'success'
-    });
-
+    return res.json({ text: response.text, status: 'success' });
   } catch (error) {
     console.error('Gemini Proxy Error:', error);
     res.status(500).json({ error: 'AI processing error' });
   }
 });
 
-// Document Extraction (Prescriptions/Labs)
 app.post('/api/ai/document-extract', authenticateToken, upload.single('file'), async (req, res) => {
-  if (!ai) {
-    return res.status(503).json({ error: 'AI Service not configured.' });
-  }
-
+  if (!ai) return res.status(503).json({ error: 'AI Service not configured.' });
   try {
     const file = req.file;
     const { documentType } = req.body;
-
-    if (!file) {
-      return res.status(400).json({ error: 'No file uploaded.' });
-    }
+    if (!file) return res.status(400).json({ error: 'No file uploaded.' });
 
     const base64Data = file.buffer.toString('base64');
     const mimeType = file.mimetype;
@@ -244,43 +269,33 @@ app.post('/api/ai/document-extract', authenticateToken, upload.single('file'), a
       5. notes: Any additional doctor instructions or next steps.
       6. confidence: A number between 0 and 1 indicating extraction confidence.
 
-      If a field is not present, return an empty array or null strings. Do not invent information.
+      If a field is not present, return an empty array or null strings.
     `;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [
-        {
-          inlineData: {
-            mimeType: mimeType,
-            data: base64Data
-          }
-        },
+        { inlineData: { mimeType, data: base64Data } },
         { text: prompt }
       ],
-      config: {
-        responseMimeType: 'application/json',
-      }
+      config: { responseMimeType: 'application/json' }
     });
 
-    const extractedData = JSON.parse(response.text);
-
-    return res.json({
-      success: true,
-      data: extractedData
-    });
+    let cleanText = response.text;
+    if (cleanText.startsWith('```json')) {
+      cleanText = cleanText.replace(/```json/g, '').replace(/```/g, '');
+    } else if (cleanText.startsWith('```')) {
+      cleanText = cleanText.replace(/```/g, '');
+    }
+    
+    const extractedData = JSON.parse(cleanText.trim());
+    return res.json({ success: true, data: extractedData });
 
   } catch (error) {
     console.error('Document Extraction Error:', error);
     res.status(500).json({ error: 'Failed to analyze document.' });
   }
 });
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'Wysh Care AI & Auth Proxy' });
-});
-
-// --- Start Server ---
 
 app.listen(PORT, () => {
   console.log(`Wysh Backend running on http://localhost:${PORT}`);
