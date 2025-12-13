@@ -21,49 +21,54 @@ export interface LabOrder {
   dateOrdered: string;
 }
 
-export interface ClinicalPatient extends Doctor { 
-  // reusing Doctor type loosely or better to define separate
+export interface ClinicalPatient {
+  id: string;
+  name: string;
+  age: number;
+  bloodType: string;
+  allergies: string[];
+  chronicConditions: string[];
+  lastVisit: string;
   prescriptions?: Prescription[];
   labOrders?: LabOrder[];
 }
 
 export const doctorService = {
   
-  // --- Doctor Directory ---
+  // --- Doctor Directory (Public) ---
   getAllDoctors: async (specialty?: Specialty, search?: string): Promise<Doctor[]> => {
-    // This stays mock for now as it's public directory data
+    // Mock public data for directory
     await new Promise(r => setTimeout(r, 600));
-    // ... (keep existing mock implementation logic for directory if needed, 
-    // or fetch from backend if we implemented doctor listing. 
-    // For now we assume the previous mock implementation was sufficient for the directory page)
-    return []; // Placeholder to avoid error, assumes component handles empty
+    return []; 
   },
 
   getDoctorById: async (id: string): Promise<Doctor | undefined> => {
     await new Promise(r => setTimeout(r, 400));
-    return undefined; // Placeholder
+    return undefined;
   },
 
   updateStatus: async (id: string, isOnline: boolean): Promise<void> => {
      console.log(`Doctor ${id} is now ${isOnline ? 'online' : 'offline'}`);
   },
 
-  // --- Clinical Workflows (Real Backend) ---
+  // --- Clinical Workflows (Authenticated Backend) ---
 
-  searchPatients: async (query: string) => {
+  searchPatients: async (query: string): Promise<ClinicalPatient[]> => {
     const token = authService.getToken();
     const res = await fetch(`${getBackendUrl()}/clinical/patients?query=${encodeURIComponent(query)}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
+    if (!res.ok) throw new Error('Failed to search patients');
     const data = await res.json();
     return data.data;
   },
 
-  getPatientDetails: async (id: string) => {
+  getPatientDetails: async (id: string): Promise<ClinicalPatient> => {
     const token = authService.getToken();
     const res = await fetch(`${getBackendUrl()}/clinical/patients/${id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
+    if (!res.ok) throw new Error('Failed to fetch patient details');
     const data = await res.json();
     return data.data;
   },

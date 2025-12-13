@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard, Button, Input, Modal, Badge, Loader } from '../../../components/UI';
-import { patientService, PatientProfile, Prescription } from '../../../services/patientService';
-import { doctorService, LabOrder } from '../../../services/doctorService';
-import { Search, UserPlus, FileText, Activity, Plus, Save, TestTube, Clock, CheckCircle } from 'lucide-react';
+import { patientService, Prescription } from '../../../services/patientService';
+import { doctorService, ClinicalPatient, LabOrder } from '../../../services/doctorService';
+import { Search, UserPlus, FileText, Activity, Plus, Save, TestTube, Clock, CheckCircle, ChevronRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotification } from '../../../context/NotificationContext';
 
@@ -11,9 +11,9 @@ export const PatientManager: React.FC = () => {
   const { addNotification } = useNotification();
   
   // Lists & Selection
-  const [patients, setPatients] = useState<any[]>([]);
+  const [patients, setPatients] = useState<ClinicalPatient[]>([]);
   const [search, setSearch] = useState('');
-  const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<ClinicalPatient | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
   // Workflow Tabs
@@ -27,7 +27,7 @@ export const PatientManager: React.FC = () => {
   const [meds, setMeds] = useState([{ name: '', dosage: '', frequency: '' }]);
   const [labForm, setLabForm] = useState({ testName: '', category: 'Blood', priority: 'Routine' });
 
-  // Initial Fetch
+  // Initial Fetch & Search
   useEffect(() => {
     const fetchPatients = async () => {
       try {
@@ -42,7 +42,7 @@ export const PatientManager: React.FC = () => {
   }, [search]);
 
   // Fetch Full Details on Select
-  const handleSelectPatient = async (patient: any) => {
+  const handleSelectPatient = async (patient: ClinicalPatient) => {
     setLoadingDetails(true);
     try {
       const details = await doctorService.getPatientDetails(patient.id);
@@ -70,11 +70,11 @@ export const PatientManager: React.FC = () => {
         notes: 'Prescribed via Wysh Clinical Console'
       });
       
-      // Update local state
-      setSelectedPatient({
-        ...selectedPatient,
-        prescriptions: [res.data, ...(selectedPatient.prescriptions || [])]
-      });
+      // Optimistically update local state
+      setSelectedPatient(prev => prev ? ({
+        ...prev,
+        prescriptions: [res.data, ...(prev.prescriptions || [])]
+      }) : null);
       
       setPrescribing(false);
       setMeds([{ name: '', dosage: '', frequency: '' }]);
@@ -92,10 +92,11 @@ export const PatientManager: React.FC = () => {
         ...labForm
       });
 
-      setSelectedPatient({
-        ...selectedPatient,
-        labOrders: [res.data, ...(selectedPatient.labOrders || [])]
-      });
+      // Optimistically update local state
+      setSelectedPatient(prev => prev ? ({
+        ...prev,
+        labOrders: [res.data, ...(prev.labOrders || [])]
+      }) : null);
 
       setOrderingLab(false);
       addNotification('success', 'Lab order placed successfully');
@@ -106,6 +107,7 @@ export const PatientManager: React.FC = () => {
 
   return (
     <div className="space-y-6 h-[calc(100vh-100px)] flex flex-col">
+      {/* Top Bar */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-display font-bold text-white">Clinical Console</h1>
@@ -133,7 +135,7 @@ export const PatientManager: React.FC = () => {
               <div 
                 key={p.id} 
                 className={`
-                  p-3 rounded-xl cursor-pointer transition-all border
+                  p-3 rounded-xl cursor-pointer transition-all border relative
                   ${selectedPatient?.id === p.id 
                     ? 'bg-teal/10 border-teal text-white' 
                     : 'bg-white/5 border-transparent text-text-secondary hover:bg-white/10 hover:text-white'}
@@ -156,35 +158,41 @@ export const PatientManager: React.FC = () => {
             loadingDetails ? (
               <div className="h-full flex items-center justify-center"><Loader text="Loading clinical history..." /></div>
             ) : (
-              <GlassCard className="h-full flex flex-col !p-0 overflow-hidden">
-                {/* Header */}
-                <div className="p-6 border-b border-white/10 bg-white/5 flex justify-between items-start">
-                   <div>
-                     <h2 className="text-2xl font-bold text-white mb-2">{selectedPatient.name}</h2>
-                     <div className="flex gap-4 text-sm text-text-secondary">
-                        <span className="flex items-center gap-1"><Activity size={14}/> ID: {selectedPatient.id}</span>
-                        <span>Age: {selectedPatient.age}</span>
-                        <span>Last Visit: {selectedPatient.lastVisit}</span>
+              <GlassCard className="h-full flex flex-col !p-0 overflow-hidden bg-[#0D0F12]">
+                {/* Patient Header */}
+                <div className="p-6 border-b border-white/10 bg-white/5 flex flex-col md:flex-row justify-between items-start gap-4">
+                   <div className="flex items-center gap-4">
+                     <div className="w-16 h-16 rounded-full bg-teal/20 border border-teal text-teal flex items-center justify-center text-xl font-bold">
+                       {selectedPatient.name.charAt(0)}
+                     </div>
+                     <div>
+                       <h2 className="text-2xl font-bold text-white">{selectedPatient.name}</h2>
+                       <div className="flex flex-wrap gap-4 text-sm text-text-secondary mt-1">
+                          <span className="flex items-center gap-1"><Activity size={14}/> ID: {selectedPatient.id}</span>
+                          <span>Age: {selectedPatient.age}</span>
+                          <span>Last Visit: {selectedPatient.lastVisit}</span>
+                       </div>
                      </div>
                    </div>
+                   
                    <div className="flex gap-2">
-                      <Button variant={activeTab === 'rx' ? 'primary' : 'outline'} icon={<FileText size={16}/>} onClick={() => setPrescribing(true)}>
+                      <Button variant={activeTab === 'rx' ? 'primary' : 'outline'} className="h-10 text-xs" icon={<FileText size={16}/>} onClick={() => setPrescribing(true)}>
                         Prescribe
                       </Button>
-                      <Button variant={activeTab === 'labs' ? 'primary' : 'outline'} icon={<TestTube size={16}/>} onClick={() => setOrderingLab(true)}>
+                      <Button variant={activeTab === 'labs' ? 'primary' : 'outline'} className="h-10 text-xs" icon={<TestTube size={16}/>} onClick={() => setOrderingLab(true)}>
                         Order Lab
                       </Button>
                    </div>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex border-b border-white/10 px-6">
+                <div className="flex border-b border-white/10 px-6 bg-black/20">
                   {['overview', 'rx', 'labs'].map(tab => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab as any)}
                       className={`
-                        px-4 py-3 text-sm font-medium border-b-2 transition-colors
+                        px-6 py-4 text-sm font-medium border-b-2 transition-colors
                         ${activeTab === tab ? 'border-teal text-white' : 'border-transparent text-text-secondary hover:text-white'}
                       `}
                     >
@@ -195,34 +203,41 @@ export const PatientManager: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Content */}
+                {/* Content Area */}
                 <div className="flex-1 overflow-y-auto p-6 bg-black/10">
                    {activeTab === 'overview' && (
-                     <div className="grid grid-cols-2 gap-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       {/* Alerts Column */}
                        <div className="space-y-4">
                          <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl">
-                            <h4 className="text-red-300 font-bold text-sm mb-3 flex items-center gap-2"><Activity size={16}/> Allergies</h4>
+                            <h4 className="text-red-300 font-bold text-sm mb-3 flex items-center gap-2"><AlertCircle size={16}/> Allergies</h4>
                             <div className="flex flex-wrap gap-2">
-                                {selectedPatient.allergies?.map((a: string) => <Badge key={a} color="purple">{a}</Badge>) || <span className="text-xs text-white/50">None</span>}
+                                {selectedPatient.allergies?.map((a: string) => <Badge key={a} color="purple">{a}</Badge>) || <span className="text-xs text-white/50">None Recorded</span>}
                             </div>
                          </div>
-                         <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                            <h4 className="text-white font-bold text-sm mb-3">Conditions</h4>
+                         <div className="bg-teal/10 border border-teal/20 p-4 rounded-xl">
+                            <h4 className="text-teal font-bold text-sm mb-3 flex items-center gap-2"><Activity size={16}/> Chronic Conditions</h4>
                              <div className="flex flex-wrap gap-2">
                                 {selectedPatient.chronicConditions?.map((c: string) => <Badge key={c} color="teal">{c}</Badge>)}
                             </div>
                          </div>
                        </div>
+                       
+                       {/* Vitals Column */}
                        <div className="bg-white/5 border border-white/10 p-4 rounded-xl h-full">
-                          <h4 className="text-white font-bold text-sm mb-3">Recent Vitals</h4>
-                          <div className="space-y-3">
-                             <div className="flex justify-between text-sm border-b border-white/5 pb-2">
-                                <span className="text-text-secondary">BP</span>
-                                <span className="text-white font-mono">120/80</span>
+                          <h4 className="text-white font-bold text-sm mb-4">Latest Vitals</h4>
+                          <div className="space-y-4">
+                             <div className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
+                                <span className="text-text-secondary">Blood Pressure</span>
+                                <span className="text-white font-mono text-lg">120/80</span>
                              </div>
-                             <div className="flex justify-between text-sm border-b border-white/5 pb-2">
+                             <div className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
                                 <span className="text-text-secondary">Heart Rate</span>
-                                <span className="text-white font-mono">72 bpm</span>
+                                <span className="text-white font-mono text-lg">72 <span className="text-xs text-text-secondary">bpm</span></span>
+                             </div>
+                             <div className="flex justify-between items-center text-sm">
+                                <span className="text-text-secondary">Temp</span>
+                                <span className="text-white font-mono text-lg">98.6 <span className="text-xs text-text-secondary">°F</span></span>
                              </div>
                           </div>
                        </div>
@@ -231,20 +246,31 @@ export const PatientManager: React.FC = () => {
 
                    {activeTab === 'rx' && (
                      <div className="space-y-4">
-                        {selectedPatient.prescriptions?.length === 0 && <p className="text-text-secondary text-sm">No active prescriptions.</p>}
+                        {(!selectedPatient.prescriptions || selectedPatient.prescriptions.length === 0) && (
+                            <div className="text-center py-12 text-text-secondary border border-dashed border-white/10 rounded-xl">
+                                No active prescriptions.
+                            </div>
+                        )}
                         {selectedPatient.prescriptions?.map((rx: Prescription) => (
-                          <div key={rx.id} className="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col gap-3">
-                             <div className="flex justify-between">
-                                <span className="text-xs text-teal font-bold">{rx.date}</span>
+                          <div key={rx.id} className="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col gap-3 group hover:border-teal/30 transition-colors">
+                             <div className="flex justify-between items-start">
+                                <div>
+                                    <span className="text-xs text-teal font-bold block mb-1">{rx.date}</span>
+                                    <span className="text-xs text-text-secondary">Ordered by {rx.doctorName}</span>
+                                </div>
                                 <Badge color="teal">Active</Badge>
                              </div>
-                             {rx.medications.map((m, i) => (
-                               <div key={i} className="flex justify-between items-center text-sm">
-                                  <span className="text-white font-medium">{m.name}</span>
-                                  <span className="text-text-secondary">{m.dosage} • {m.frequency}</span>
-                               </div>
-                             ))}
-                             {rx.notes && <p className="text-xs text-text-secondary italic mt-2">"{rx.notes}"</p>}
+                             
+                             <div className="space-y-2 mt-2">
+                                {rx.medications.map((m, i) => (
+                                  <div key={i} className="flex justify-between items-center text-sm bg-black/20 p-2 rounded">
+                                      <span className="text-white font-medium">{m.name}</span>
+                                      <span className="text-text-secondary">{m.dosage} • {m.frequency}</span>
+                                  </div>
+                                ))}
+                             </div>
+                             
+                             {rx.notes && <p className="text-xs text-text-secondary italic mt-1 border-t border-white/5 pt-2">"{rx.notes}"</p>}
                           </div>
                         ))}
                      </div>
@@ -252,21 +278,25 @@ export const PatientManager: React.FC = () => {
 
                    {activeTab === 'labs' && (
                      <div className="space-y-4">
-                        {selectedPatient.labOrders?.length === 0 && <p className="text-text-secondary text-sm">No labs ordered.</p>}
+                        {(!selectedPatient.labOrders || selectedPatient.labOrders.length === 0) && (
+                            <div className="text-center py-12 text-text-secondary border border-dashed border-white/10 rounded-xl">
+                                No labs ordered.
+                            </div>
+                        )}
                         {selectedPatient.labOrders?.map((lab: LabOrder) => (
-                          <div key={lab.id} className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
+                          <div key={lab.id} className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between group hover:border-purple/30 transition-colors">
                              <div className="flex items-center gap-4">
-                                <div className="p-2 bg-purple/10 rounded-lg text-purple">
+                                <div className="p-3 bg-purple/10 rounded-lg text-purple">
                                   <TestTube size={20} />
                                 </div>
                                 <div>
                                   <h4 className="text-white font-bold text-sm">{lab.testName}</h4>
-                                  <p className="text-xs text-text-secondary">{lab.category} • {lab.priority}</p>
+                                  <p className="text-xs text-text-secondary mt-0.5">{lab.category} • {lab.priority}</p>
                                 </div>
                              </div>
                              <div className="text-right">
                                 <Badge color={lab.status === 'Completed' ? 'teal' : 'purple'}>{lab.status}</Badge>
-                                <p className="text-[10px] text-text-secondary mt-1">{lab.dateOrdered}</p>
+                                <p className="text-[10px] text-text-secondary mt-2">{lab.dateOrdered}</p>
                              </div>
                           </div>
                         ))}
@@ -289,8 +319,8 @@ export const PatientManager: React.FC = () => {
         <div className="space-y-4">
           <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
              {meds.map((med, idx) => (
-               <div key={idx} className="grid grid-cols-3 gap-2 p-3 bg-white/5 rounded-lg border border-white/5">
-                 <div className="col-span-3 md:col-span-1">
+               <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-2 p-3 bg-white/5 rounded-lg border border-white/5">
+                 <div className="md:col-span-1">
                    <input 
                       placeholder="Medication Name" 
                       className="w-full bg-transparent border-b border-white/10 text-white text-sm focus:border-teal outline-none py-1"
@@ -303,7 +333,7 @@ export const PatientManager: React.FC = () => {
                    />
                  </div>
                  <input 
-                    placeholder="Dosage" 
+                    placeholder="Dosage (e.g. 50mg)" 
                     className="w-full bg-transparent border-b border-white/10 text-white text-sm focus:border-teal outline-none py-1"
                     value={med.dosage}
                     onChange={(e) => {
@@ -313,7 +343,7 @@ export const PatientManager: React.FC = () => {
                     }}
                  />
                  <input 
-                    placeholder="Freq" 
+                    placeholder="Freq (e.g. 2x Daily)" 
                     className="w-full bg-transparent border-b border-white/10 text-white text-sm focus:border-teal outline-none py-1"
                     value={med.frequency}
                     onChange={(e) => {
@@ -326,7 +356,7 @@ export const PatientManager: React.FC = () => {
              ))}
           </div>
           <Button variant="outline" className="w-full text-xs dashed" onClick={handleAddMed} icon={<Plus size={14}/>}>
-            Add Drug
+            Add Medication
           </Button>
           <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
              <Button variant="outline" onClick={() => setPrescribing(false)}>Cancel</Button>

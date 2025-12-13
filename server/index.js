@@ -18,7 +18,7 @@ if (!GOOGLE_CLIENT_ID) {
   console.warn("⚠️  WARNING: GOOGLE_CLIENT_ID is not set in server/.env. Google Auth will fail.");
 }
 
-// Multer setup for memory storage (files are processed in RAM then sent to Gemini)
+// Multer setup
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
@@ -26,10 +26,12 @@ const upload = multer({
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-// --- In-Memory Mock Database ---
+// --- In-Memory Mock Database (Mirrors Prisma Schema) ---
+// In production, replace these arrays with Prisma queries.
+
 const users = [
   {
-    id: 'usr_demo_doc',
+    id: 'usr_doc_1',
     name: 'Dr. Sarah Chen',
     email: 'doctor@wysh.com',
     password: 'password', 
@@ -38,7 +40,7 @@ const users = [
     specialty: 'Cardiology'
   },
   {
-    id: 'usr_demo_patient',
+    id: 'usr_pat_1',
     name: 'Alex Doe',
     email: 'alex@example.com',
     password: 'password',
@@ -48,14 +50,69 @@ const users = [
 ];
 
 const patients = [
-  { id: 'p1', userId: 'usr_demo_patient', name: 'Alex Doe', age: 34, bloodType: 'O+', allergies: ['Peanuts'], chronicConditions: ['Arrhythmia'], lastVisit: '2024-10-12' },
-  { id: 'p2', userId: 'usr_p2', name: 'Maria Garcia', age: 29, bloodType: 'A-', allergies: [], chronicConditions: ['Pregnancy'], lastVisit: '2024-10-15' },
-  { id: 'p3', userId: 'usr_p3', name: 'John Smith', age: 45, bloodType: 'B+', allergies: ['Penicillin'], chronicConditions: ['Hypertension'], lastVisit: '2024-10-10' },
+  { 
+    id: 'p1', 
+    userId: 'usr_pat_1', 
+    name: 'Alex Doe', 
+    age: 34, 
+    bloodType: 'O+', 
+    allergies: ['Peanuts'], 
+    chronicConditions: ['Arrhythmia'], 
+    lastVisit: '2024-10-12',
+    status: 'Stable'
+  },
+  { 
+    id: 'p2', 
+    userId: 'usr_pat_2', // Mock user
+    name: 'Maria Garcia', 
+    age: 29, 
+    bloodType: 'A-', 
+    allergies: [], 
+    chronicConditions: ['Pregnancy'], 
+    lastVisit: '2024-10-15',
+    status: 'Active' 
+  },
+  { 
+    id: 'p3', 
+    userId: 'usr_pat_3', 
+    name: 'John Smith', 
+    age: 45, 
+    bloodType: 'B+', 
+    allergies: ['Penicillin'], 
+    chronicConditions: ['Hypertension'], 
+    lastVisit: '2024-10-10',
+    status: 'Critical'
+  },
 ];
 
+// Clinical tables
 const clinicalRecords = {
-  prescriptions: [],
-  labOrders: []
+  prescriptions: [
+    {
+      id: 'rx_demo_1',
+      patientId: 'p1',
+      doctorId: 'usr_doc_1',
+      doctorName: 'Dr. Sarah Chen',
+      date: '2024-10-12',
+      status: 'Active',
+      notes: 'Take with food',
+      medications: [
+        { name: 'Metoprolol', dosage: '50mg', frequency: 'Twice daily', duration: '30 days' }
+      ]
+    }
+  ],
+  labOrders: [
+    {
+      id: 'lab_demo_1',
+      patientId: 'p1',
+      doctorId: 'usr_doc_1',
+      testName: 'Lipid Panel',
+      category: 'Blood',
+      priority: 'Routine',
+      status: 'Completed',
+      dateOrdered: '2024-10-12'
+    }
+  ]
 };
 
 // --- Middleware ---
@@ -80,7 +137,7 @@ app.use('/api/', limiter);
 
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) return res.sendStatus(401);
 
@@ -91,7 +148,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// --- Auth Routes ---
+// --- Auth Helper ---
 const generateToken = (user) => {
   return jwt.sign(
     { id: user.id, email: user.email, role: user.role, name: user.name },
@@ -99,6 +156,8 @@ const generateToken = (user) => {
     { expiresIn: '24h' }
   );
 };
+
+// --- Auth Routes ---
 
 app.post('/api/auth/google', async (req, res) => {
   try {
@@ -161,10 +220,12 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
   res.json({ user });
 });
 
-// --- Clinical Routes (Doctor Workflows) ---
+// --- Clinical Workflows (Doctor APIs) ---
 
-// Get Patient List
+// 1. Search Patients
 app.get('/api/clinical/patients', authenticateToken, (req, res) => {
+  if (req.user.role !== 'doctor') return res.sendStatus(403);
+  
   const { query } = req.query;
   let results = patients;
   if (query) {
@@ -174,20 +235,30 @@ app.get('/api/clinical/patients', authenticateToken, (req, res) => {
   res.json({ data: results });
 });
 
-// Get Single Patient Details with History
+// 2. Get Patient Details (Consolidated History)
 app.get('/api/clinical/patients/:id', authenticateToken, (req, res) => {
+  if (req.user.role !== 'doctor') return res.sendStatus(403);
+
   const patient = patients.find(p => p.id === req.params.id);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
   
-  // Attach clinical history
+  // Join related records (In a real DB, this would be a Prisma include)
   const patientRx = clinicalRecords.prescriptions.filter(rx => rx.patientId === patient.id);
   const patientLabs = clinicalRecords.labOrders.filter(lab => lab.patientId === patient.id);
   
-  res.json({ data: { ...patient, prescriptions: patientRx, labOrders: patientLabs } });
+  res.json({ 
+    data: { 
+      ...patient, 
+      prescriptions: patientRx, 
+      labOrders: patientLabs 
+    } 
+  });
 });
 
-// Create Prescription
+// 3. Create Prescription
 app.post('/api/clinical/prescriptions', authenticateToken, (req, res) => {
+  if (req.user.role !== 'doctor') return res.sendStatus(403);
+  
   const { patientId, medications, notes } = req.body;
   
   const newRx = {
@@ -205,8 +276,10 @@ app.post('/api/clinical/prescriptions', authenticateToken, (req, res) => {
   res.status(201).json({ data: newRx });
 });
 
-// Order Lab Test
+// 4. Order Lab Test
 app.post('/api/clinical/labs', authenticateToken, (req, res) => {
+  if (req.user.role !== 'doctor') return res.sendStatus(403);
+
   const { patientId, testName, category, priority } = req.body;
 
   const newLab = {
@@ -223,7 +296,6 @@ app.post('/api/clinical/labs', authenticateToken, (req, res) => {
   clinicalRecords.labOrders.unshift(newLab);
   res.status(201).json({ data: newLab });
 });
-
 
 // --- AI Service ---
 
