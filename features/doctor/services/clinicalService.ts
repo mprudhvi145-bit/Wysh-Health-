@@ -18,7 +18,7 @@ export interface CreateNotePayload {
   content: string;
   subject?: string;
   type?: string;
-  isPrivate?: boolean;
+  shared?: boolean;
 }
 
 export interface CloseAppointmentPayload {

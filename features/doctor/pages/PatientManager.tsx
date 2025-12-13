@@ -1,35 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { GlassCard, Button, Input, Modal, Badge, Loader, Checkbox } from '../../../components/UI';
+import { GlassCard, Button, Input, Loader } from '../../../components/UI';
 import { clinicalService } from '../services/clinicalService';
-import { ClinicalProvider, useClinicalContext } from '../context/ClinicalContext';
+import { ClinicalProvider } from '../context/ClinicalContext';
 import { useClinical } from '../hooks/useClinical';
-import { Search, UserPlus, FileText, Activity, Plus, Save, TestTube, Clock, CheckCircle, ChevronRight, AlertCircle, StickyNote, Lock, Unlock } from 'lucide-react';
+import { Search, UserPlus, Activity, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotification } from '../../../context/NotificationContext';
-import { ClinicalPatient } from '../../../services/doctorService'; // Keeping type for list compatibility
+import { ClinicalPatient } from '../../../services/doctorService';
+
+// Import Tabs
+import OverviewTab from './tabs/OverviewTab';
+import PrescriptionsTab from './tabs/PrescriptionsTab';
+import LabsTab from './tabs/LabsTab';
+import NotesTab from './tabs/NotesTab';
+import DocumentsTab from './tabs/DocumentsTab';
 
 // Internal Component accessing Context
 const PatientManagerContent: React.FC = () => {
-  const { user } = useAuth();
+  const { loadPatient, patient, loading, clear } = useClinical();
   const { addNotification } = useNotification();
-  const { loadPatient, patient, prescriptions, labOrders, clinicalNotes, loading, refresh, clear } = useClinical();
   
   // Lists & Selection
   const [patients, setPatients] = useState<ClinicalPatient[]>([]);
   const [search, setSearch] = useState('');
-  
-  // Workflow Tabs
-  const [activeTab, setActiveTab] = useState<'overview' | 'rx' | 'labs' | 'notes'>('overview');
-  
-  // Modals
-  const [prescribing, setPrescribing] = useState(false);
-  const [orderingLab, setOrderingLab] = useState(false);
-  const [writingNote, setWritingNote] = useState(false);
-  
-  // Forms
-  const [meds, setMeds] = useState([{ name: '', dosage: '', frequency: '' }]);
-  const [labForm, setLabForm] = useState({ testName: '', category: 'Blood', priority: 'Routine' });
-  const [noteForm, setNoteForm] = useState({ type: 'General', subject: '', content: '', isPrivate: false });
+  const [activeTab, setActiveTab] = useState<'overview' | 'rx' | 'labs' | 'notes' | 'docs'>('overview');
 
   // Initial Fetch & Search for Sidebar
   useEffect(() => {
@@ -54,70 +48,6 @@ const PatientManagerContent: React.FC = () => {
   const handleCloseVisit = () => {
       addNotification('success', 'Visit summary logged. Chart closed.');
       clear();
-  };
-
-  // --- Actions ---
-
-  const handleAddMed = () => {
-    setMeds([...meds, { name: '', dosage: '', frequency: '' }]);
-  };
-
-  const handlePrescribe = async () => {
-    if (!patient || !user) return;
-    try {
-      await clinicalService.createPrescription({
-        patientId: patient.id,
-        items: meds.map(m => ({ 
-            medicine: m.name, 
-            dosage: m.dosage, 
-            frequency: m.frequency, 
-            duration: '30 days' 
-        })),
-        notes: 'Prescribed via Wysh Clinical Console'
-      });
-      
-      await refresh();
-      setPrescribing(false);
-      setMeds([{ name: '', dosage: '', frequency: '' }]);
-      addNotification('success', 'Prescription sent to pharmacy');
-    } catch (err) {
-      addNotification('error', 'Failed to prescribe');
-    }
-  };
-
-  const handleOrderLab = async () => {
-    if (!patient || !user) return;
-    try {
-      await clinicalService.createLabOrder({
-        patientId: patient.id,
-        tests: [labForm.testName],
-        category: labForm.category,
-        priority: labForm.priority
-      });
-
-      await refresh();
-      setOrderingLab(false);
-      addNotification('success', 'Lab order placed successfully');
-    } catch (err) {
-      addNotification('error', 'Failed to place order');
-    }
-  };
-
-  const handleSaveNote = async () => {
-    if (!patient || !user) return;
-    try {
-      await clinicalService.addNote({
-        patientId: patient.id,
-        ...noteForm
-      });
-
-      await refresh();
-      setWritingNote(false);
-      setNoteForm({ type: 'General', subject: '', content: '', isPrivate: false });
-      addNotification('success', 'Clinical note saved');
-    } catch (err) {
-      addNotification('error', 'Failed to save note');
-    }
   };
 
   return (
@@ -146,6 +76,9 @@ const PatientManagerContent: React.FC = () => {
           </div>
           
           <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+            {patients.length === 0 && (
+                <div className="text-center py-8 text-text-secondary text-sm">No patients found.</div>
+            )}
             {patients.map(p => (
               <div 
                 key={p.id} 
@@ -194,158 +127,38 @@ const PatientManagerContent: React.FC = () => {
                        <Button variant="outline" className="h-10 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10" onClick={handleCloseVisit}>
                          End Visit
                        </Button>
-                      <Button variant={activeTab === 'notes' ? 'primary' : 'outline'} className="h-10 text-xs" icon={<StickyNote size={16}/>} onClick={() => setWritingNote(true)}>
-                        Add Note
-                      </Button>
-                      <Button variant={activeTab === 'rx' ? 'primary' : 'outline'} className="h-10 text-xs" icon={<FileText size={16}/>} onClick={() => setPrescribing(true)}>
-                        Prescribe
-                      </Button>
-                      <Button variant={activeTab === 'labs' ? 'primary' : 'outline'} className="h-10 text-xs" icon={<TestTube size={16}/>} onClick={() => setOrderingLab(true)}>
-                        Order Lab
-                      </Button>
                    </div>
                 </div>
 
                 {/* Tabs */}
                 <div className="flex border-b border-white/10 px-6 bg-black/20 overflow-x-auto">
-                  {['overview', 'rx', 'labs', 'notes'].map(tab => (
+                  {[
+                    { key: 'overview', label: 'Overview' },
+                    { key: 'rx', label: 'Prescriptions' },
+                    { key: 'labs', label: 'Labs' },
+                    { key: 'notes', label: 'Notes' },
+                    { key: 'docs', label: 'Documents' }
+                  ].map(tab => (
                     <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab as any)}
+                      key={tab.key}
+                      onClick={() => setActiveTab(tab.key as any)}
                       className={`
                         px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
-                        ${activeTab === tab ? 'border-teal text-white' : 'border-transparent text-text-secondary hover:text-white'}
+                        ${activeTab === tab.key ? 'border-teal text-white' : 'border-transparent text-text-secondary hover:text-white'}
                       `}
                     >
-                      {tab === 'overview' && 'Clinical Overview'}
-                      {tab === 'rx' && 'Medications'}
-                      {tab === 'labs' && 'Lab Results'}
-                      {tab === 'notes' && 'Clinical Notes'}
+                      {tab.label}
                     </button>
                   ))}
                 </div>
 
                 {/* Content Area */}
                 <div className="flex-1 overflow-y-auto p-6 bg-black/10">
-                   {activeTab === 'overview' && (
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                       {/* Alerts Column */}
-                       <div className="space-y-4">
-                         <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl">
-                            <h4 className="text-red-300 font-bold text-sm mb-3 flex items-center gap-2"><AlertCircle size={16}/> Allergies</h4>
-                            <div className="flex flex-wrap gap-2">
-                                {patient.allergies?.map((a: string) => <Badge key={a} color="purple">{a}</Badge>) || <span className="text-xs text-white/50">None Recorded</span>}
-                            </div>
-                         </div>
-                         <div className="bg-teal/10 border border-teal/20 p-4 rounded-xl">
-                            <h4 className="text-teal font-bold text-sm mb-3 flex items-center gap-2"><Activity size={16}/> Chronic Conditions</h4>
-                             <div className="flex flex-wrap gap-2">
-                                {patient.chronicConditions?.map((c: string) => <Badge key={c} color="teal">{c}</Badge>)}
-                            </div>
-                         </div>
-                       </div>
-                       
-                       {/* Vitals Column */}
-                       <div className="bg-white/5 border border-white/10 p-4 rounded-xl h-full">
-                          <h4 className="text-white font-bold text-sm mb-4">Latest Vitals</h4>
-                          <div className="space-y-4">
-                             <div className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
-                                <span className="text-text-secondary">Blood Pressure</span>
-                                <span className="text-white font-mono text-lg">120/80</span>
-                             </div>
-                             <div className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
-                                <span className="text-text-secondary">Heart Rate</span>
-                                <span className="text-white font-mono text-lg">72 <span className="text-xs text-text-secondary">bpm</span></span>
-                             </div>
-                             <div className="flex justify-between items-center text-sm">
-                                <span className="text-text-secondary">Temp</span>
-                                <span className="text-white font-mono text-lg">98.6 <span className="text-xs text-text-secondary">°F</span></span>
-                             </div>
-                          </div>
-                       </div>
-                     </div>
-                   )}
-
-                   {activeTab === 'rx' && (
-                     <div className="space-y-4">
-                        {(!prescriptions || prescriptions.length === 0) && (
-                            <div className="text-center py-12 text-text-secondary border border-dashed border-white/10 rounded-xl">
-                                No active prescriptions.
-                            </div>
-                        )}
-                        {prescriptions.map((rx: any) => (
-                          <div key={rx.id} className="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col gap-3 group hover:border-teal/30 transition-colors">
-                             <div className="flex justify-between items-start">
-                                <div>
-                                    <span className="text-xs text-teal font-bold block mb-1">{rx.createdAt ? new Date(rx.createdAt).toLocaleDateString() : rx.date}</span>
-                                    <span className="text-xs text-text-secondary">Ordered by {rx.doctorId || 'Dr. Ref'}</span>
-                                </div>
-                                <Badge color="teal">Active</Badge>
-                             </div>
-                             
-                             <div className="space-y-2 mt-2">
-                                {rx.items?.map((m: any, i: number) => (
-                                  <div key={i} className="flex justify-between items-center text-sm bg-black/20 p-2 rounded">
-                                      <span className="text-white font-medium">{m.medicine}</span>
-                                      <span className="text-text-secondary">{m.dosage} • {m.frequency}</span>
-                                  </div>
-                                ))}
-                             </div>
-                             
-                             {rx.notes && <p className="text-xs text-text-secondary italic mt-1 border-t border-white/5 pt-2">"{rx.notes}"</p>}
-                          </div>
-                        ))}
-                     </div>
-                   )}
-
-                   {activeTab === 'labs' && (
-                     <div className="space-y-4">
-                        {(!labOrders || labOrders.length === 0) && (
-                            <div className="text-center py-12 text-text-secondary border border-dashed border-white/10 rounded-xl">
-                                No labs ordered.
-                            </div>
-                        )}
-                        {labOrders.map((lab: any) => (
-                          <div key={lab.id} className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between group hover:border-purple/30 transition-colors">
-                             <div className="flex items-center gap-4">
-                                <div className="p-3 bg-purple/10 rounded-lg text-purple">
-                                  <TestTube size={20} />
-                                </div>
-                                <div>
-                                  <h4 className="text-white font-bold text-sm">{lab.tests?.join(', ') || lab.testName}</h4>
-                                  <p className="text-xs text-text-secondary mt-0.5">{lab.priority}</p>
-                                </div>
-                             </div>
-                             <div className="text-right">
-                                <Badge color={lab.status === 'COMPLETED' ? 'teal' : 'purple'}>{lab.status}</Badge>
-                                <p className="text-[10px] text-text-secondary mt-2">{lab.createdAt ? new Date(lab.createdAt).toLocaleDateString() : lab.dateOrdered}</p>
-                             </div>
-                          </div>
-                        ))}
-                     </div>
-                   )}
-
-                   {activeTab === 'notes' && (
-                     <div className="space-y-4">
-                        {(!clinicalNotes || clinicalNotes.length === 0) && (
-                            <div className="text-center py-12 text-text-secondary border border-dashed border-white/10 rounded-xl">
-                                No clinical notes found.
-                            </div>
-                        )}
-                        {clinicalNotes.map((note: any) => (
-                           <div key={note.id} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all">
-                              <div className="flex justify-between items-start mb-2">
-                                 <div>
-                                    <h4 className="text-white font-bold text-sm">{note.subject || 'Clinical Note'}</h4>
-                                    <p className="text-xs text-text-secondary">{new Date(note.createdAt).toLocaleString()} • {note.type || 'General'}</p>
-                                 </div>
-                                 {note.isPrivate && <Lock size={14} className="text-red-400" />}
-                              </div>
-                              <p className="text-sm text-text-secondary mt-2 leading-relaxed whitespace-pre-wrap">{note.content}</p>
-                           </div>
-                        ))}
-                     </div>
-                   )}
+                   {activeTab === 'overview' && <OverviewTab />}
+                   {activeTab === 'rx' && <PrescriptionsTab />}
+                   {activeTab === 'labs' && <LabsTab />}
+                   {activeTab === 'notes' && <NotesTab />}
+                   {activeTab === 'docs' && <DocumentsTab />}
                 </div>
               </GlassCard>
             )
@@ -356,152 +169,6 @@ const PatientManagerContent: React.FC = () => {
              </div>
           )}
         </div>
-
-        {/* Prescription Modal */}
-        <Modal isOpen={prescribing} onClose={() => setPrescribing(false)} title="Write Prescription">
-            <div className="space-y-4">
-            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                {meds.map((med, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-2 p-3 bg-white/5 rounded-lg border border-white/5">
-                    <div className="md:col-span-1">
-                    <input 
-                        placeholder="Medication Name" 
-                        className="w-full bg-transparent border-b border-white/10 text-white text-sm focus:border-teal outline-none py-1"
-                        value={med.name}
-                        onChange={(e) => {
-                            const newMeds = [...meds];
-                            newMeds[idx].name = e.target.value;
-                            setMeds(newMeds);
-                        }}
-                    />
-                    </div>
-                    <input 
-                        placeholder="Dosage (e.g. 50mg)" 
-                        className="w-full bg-transparent border-b border-white/10 text-white text-sm focus:border-teal outline-none py-1"
-                        value={med.dosage}
-                        onChange={(e) => {
-                        const newMeds = [...meds];
-                        newMeds[idx].dosage = e.target.value;
-                        setMeds(newMeds);
-                        }}
-                    />
-                    <input 
-                        placeholder="Freq (e.g. 2x Daily)" 
-                        className="w-full bg-transparent border-b border-white/10 text-white text-sm focus:border-teal outline-none py-1"
-                        value={med.frequency}
-                        onChange={(e) => {
-                        const newMeds = [...meds];
-                        newMeds[idx].frequency = e.target.value;
-                        setMeds(newMeds);
-                        }}
-                    />
-                </div>
-                ))}
-            </div>
-            <Button variant="outline" className="w-full text-xs dashed" onClick={handleAddMed} icon={<Plus size={14}/>}>
-                Add Medication
-            </Button>
-            <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
-                <Button variant="outline" onClick={() => setPrescribing(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handlePrescribe} icon={<Save size={16}/>}>Sign & Send</Button>
-            </div>
-            </div>
-        </Modal>
-
-        {/* Lab Order Modal */}
-        <Modal isOpen={orderingLab} onClose={() => setOrderingLab(false)} title="Order Lab Test">
-            <div className="space-y-4">
-            <div>
-                <label className="text-xs text-text-secondary uppercase mb-1 block">Test Name</label>
-                <Input 
-                    value={labForm.testName}
-                    onChange={e => setLabForm({...labForm, testName: e.target.value})}
-                    placeholder="e.g. Complete Blood Count"
-                />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="text-xs text-text-secondary uppercase mb-1 block">Category</label>
-                    <select 
-                    className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white"
-                    value={labForm.category}
-                    onChange={e => setLabForm({...labForm, category: e.target.value})}
-                    >
-                    <option>Blood</option>
-                    <option>Urine</option>
-                    <option>Imaging</option>
-                    <option>Biopsy</option>
-                    </select>
-                </div>
-                <div>
-                    <label className="text-xs text-text-secondary uppercase mb-1 block">Priority</label>
-                    <select 
-                    className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white"
-                    value={labForm.priority}
-                    onChange={e => setLabForm({...labForm, priority: e.target.value})}
-                    >
-                    <option>Routine</option>
-                    <option>Urgent</option>
-                    <option>Stat</option>
-                    </select>
-                </div>
-            </div>
-            <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
-                <Button variant="outline" onClick={() => setOrderingLab(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handleOrderLab} icon={<TestTube size={16}/>}>Place Order</Button>
-            </div>
-            </div>
-        </Modal>
-
-        {/* Clinical Note Modal */}
-        <Modal isOpen={writingNote} onClose={() => setWritingNote(false)} title="Add Clinical Note">
-            <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="text-xs text-text-secondary uppercase mb-1 block">Note Type</label>
-                    <select 
-                    className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white"
-                    value={noteForm.type}
-                    onChange={e => setNoteForm({...noteForm, type: e.target.value})}
-                    >
-                    <option>General</option>
-                    <option>Visit Summary</option>
-                    <option>SOAP Note</option>
-                    <option>Phone Consult</option>
-                    </select>
-                </div>
-                <div>
-                    <label className="text-xs text-text-secondary uppercase mb-1 block">Subject</label>
-                    <Input 
-                    placeholder="e.g. Follow up on hypertension"
-                    value={noteForm.subject}
-                    onChange={e => setNoteForm({...noteForm, subject: e.target.value})}
-                    />
-                </div>
-            </div>
-            <div>
-                <label className="text-xs text-text-secondary uppercase mb-1 block">Note Content</label>
-                <textarea 
-                    className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-teal min-h-[150px]"
-                    placeholder="Enter clinical observations..."
-                    value={noteForm.content}
-                    onChange={e => setNoteForm({...noteForm, content: e.target.value})}
-                />
-            </div>
-            <div className="flex items-center gap-2">
-                <Checkbox 
-                    id="private-note"
-                    checked={noteForm.isPrivate}
-                    onChange={(checked) => setNoteForm({...noteForm, isPrivate: checked})}
-                    label="Mark as Private (Visible only to you)"
-                />
-            </div>
-            <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
-                <Button variant="outline" onClick={() => setWritingNote(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handleSaveNote} icon={<Save size={16}/>}>Save Note</Button>
-            </div>
-            </div>
-        </Modal>
 
       </div>
     </div>
