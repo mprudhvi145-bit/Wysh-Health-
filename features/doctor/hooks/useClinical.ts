@@ -11,6 +11,7 @@ export const useClinical = () => {
     labOrders: ctx.chart.labOrders || [], 
     clinicalNotes: ctx.chart.clinicalNotes || [], 
     documents: ctx.chart.documents || [],
+    catalogs: ctx.catalogs, // Expose catalogs
     loading: ctx.loading,
     error: ctx.error,
     refresh: ctx.refresh,

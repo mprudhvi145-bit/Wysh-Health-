@@ -1,7 +1,7 @@
 import React from 'react';
 import { useClinical } from '../../hooks/useClinical';
 import { Badge, GlassCard } from '../../../../components/UI';
-import { AlertCircle, Activity, Thermometer, Heart } from 'lucide-react';
+import { AlertCircle, Activity, Thermometer, Heart, AlertTriangle, FileWarning } from 'lucide-react';
 
 const OverviewTab: React.FC = () => {
   const { patient } = useClinical();
@@ -10,6 +10,28 @@ const OverviewTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Problem List (Pillar 2: Longitudinal Record) */}
+      <GlassCard className="border-l-4 border-l-purple">
+          <h4 className="text-white font-bold text-sm mb-4 flex items-center gap-2">
+              <FileWarning size={16} className="text-purple" /> Active Problem List
+          </h4>
+          {patient.problems && patient.problems.length > 0 ? (
+              <div className="space-y-2">
+                  {patient.problems.map((prob: any) => (
+                      <div key={prob.id} className="flex justify-between items-center p-2 bg-white/5 rounded border border-white/5">
+                          <div>
+                              <p className="text-white font-medium text-sm">{prob.diagnosis}</p>
+                              <p className="text-[10px] text-text-secondary">Onset: {prob.onset}</p>
+                          </div>
+                          <Badge color="purple">{prob.status}</Badge>
+                      </div>
+                  ))}
+              </div>
+          ) : (
+              <p className="text-xs text-text-secondary italic">No active problems recorded.</p>
+          )}
+      </GlassCard>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Alerts Column */}
         <div className="space-y-4">
@@ -58,8 +80,6 @@ const OverviewTab: React.FC = () => {
           </div>
         </div>
       </div>
-      
-      {/* Recent History or other summary info can go here */}
     </div>
   );
 };

@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useClinical } from '../../hooks/useClinical';
 import { clinicalService } from '../../services/clinicalService';
 import { GlassCard, Button, Input, Badge, Loader } from '../../../../components/UI';
-import { Plus, Save, Trash2, FileText } from 'lucide-react';
+import { Plus, Save, Trash2, FileText, Search } from 'lucide-react';
 
 const PrescriptionsTab: React.FC = () => {
-  const { prescriptions, patient, refresh } = useClinical();
+  const { prescriptions, patient, refresh, catalogs } = useClinical();
   const [items, setItems] = useState([{ medicine: "", dosage: "", frequency: "", duration: "" }]);
   const [saving, setSaving] = useState(false);
 
@@ -16,6 +16,14 @@ const PrescriptionsTab: React.FC = () => {
     setItems(prev => prev.filter((_, i) => i !== idx));
 
   const updateItem = (idx: number, field: string, value: string) => {
+    // If medicine field is updated, check if it matches a catalog item to prefill
+    if (field === 'medicine') {
+        const match = catalogs.medications.find(m => m.name === value);
+        if (match) {
+             setItems(prev => prev.map((item, i) => i === idx ? { ...item, medicine: value, dosage: match.strength } : item));
+             return;
+        }
+    }
     setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
   };
 
@@ -46,13 +54,19 @@ const PrescriptionsTab: React.FC = () => {
         <div className="space-y-3">
           {items.map((item, idx) => (
             <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center animate-fadeIn">
-              <div className="md:col-span-4">
+              <div className="md:col-span-4 relative">
                 <Input 
                   placeholder="Medicine Name" 
                   value={item.medicine} 
                   onChange={e => updateItem(idx, 'medicine', e.target.value)}
                   className="!py-2 text-sm"
+                  list={`meds-list-${idx}`}
                 />
+                <datalist id={`meds-list-${idx}`}>
+                    {catalogs.medications.map(m => (
+                        <option key={m.id} value={m.name}>{m.strength} - {m.form}</option>
+                    ))}
+                </datalist>
               </div>
               <div className="md:col-span-2">
                 <Input 

@@ -1,6 +1,11 @@
 import { ClinicalService } from "./service.js";
 
 export const ClinicalController = {
+  async getCatalogs(req, res) {
+      const data = await ClinicalService.getCatalogs();
+      res.json({ data });
+  },
+
   async searchPatients(req, res) {
     const { query = "" } = req.query;
     // Basic sanitization

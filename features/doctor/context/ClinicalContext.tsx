@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { clinicalService } from "../services/clinicalService";
 
 type Chart = {
@@ -13,6 +13,11 @@ type Chart = {
 type ClinicalState = {
   patientId?: string;
   chart: Chart;
+  catalogs: {
+    medications: any[];
+    labTests: any[];
+    services: any[];
+  };
   loading: boolean;
   error?: string;
 };
@@ -26,13 +31,30 @@ type ClinicalCtx = ClinicalState & {
 const Ctx = createContext<ClinicalCtx | null>(null);
 
 export const ClinicalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<ClinicalState>({ chart: {}, loading: false });
+  const [state, setState] = useState<ClinicalState>({ 
+      chart: {}, 
+      catalogs: { medications: [], labTests: [], services: [] },
+      loading: false 
+  });
+
+  // Fetch Catalogs on Mount
+  useEffect(() => {
+      const fetchCatalogs = async () => {
+          try {
+              const data = await clinicalService.getCatalogs();
+              setState(s => ({ ...s, catalogs: data }));
+          } catch(e) {
+              console.error("Failed to load catalogs", e);
+          }
+      };
+      fetchCatalogs();
+  }, []);
 
   const loadPatient = useCallback(async (patientId: string) => {
     setState(s => ({ ...s, loading: true, error: undefined, patientId }));
     try {
       const data = await clinicalService.getPatientChart(patientId);
-      setState({ patientId, chart: data, loading: false });
+      setState(s => ({ ...s, patientId, chart: data, loading: false }));
     } catch (e: any) {
       console.error(e);
       setState(s => ({ ...s, loading: false, error: e?.message || "Failed to load chart" }));
@@ -53,7 +75,7 @@ export const ClinicalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [state.patientId]);
 
   const clear = useCallback(() => {
-      setState({ chart: {}, loading: false, patientId: undefined });
+      setState(s => ({ ...s, chart: {}, loading: false, patientId: undefined }));
   }, []);
 
   return (

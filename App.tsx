@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Investor } from './pages/Investor';
 import { Contact } from './pages/Contact';
 import { Team } from './pages/Team';
+import { Products } from './pages/Products';
 import { AIHealthDash } from './pages/AIHealthDash';
 import { AuthProvider } from './context/AuthContext';
 import { Login } from './pages/Auth/Login';
@@ -25,16 +26,6 @@ import { PatientPrescriptions } from './features/patient/pages/PatientPrescripti
 import { PatientLabs } from './features/patient/pages/PatientLabs';
 import { AppointmentSummary } from './features/patient/pages/AppointmentSummary';
 import { AIInsights } from './features/patient/pages/AIInsights';
-
-// Placeholder for Products page
-const Products = () => (
-  <div className="min-h-screen flex items-center justify-center text-white">
-    <div className="text-center">
-      <h1 className="text-4xl font-bold mb-4">Product Suite</h1>
-      <p className="text-text-secondary">Modules loading...</p>
-    </div>
-  </div>
-);
 
 const App: React.FC = () => {
   return (

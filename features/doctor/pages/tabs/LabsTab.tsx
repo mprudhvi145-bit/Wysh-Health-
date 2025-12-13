@@ -5,7 +5,7 @@ import { GlassCard, Button, Input, Badge, Loader } from '../../../../components/
 import { TestTube, Plus, Clock } from 'lucide-react';
 
 const LabsTab: React.FC = () => {
-  const { labOrders, patient, refresh } = useClinical();
+  const { labOrders, patient, refresh, catalogs } = useClinical();
   const [tests, setTests] = useState("");
   const [ordering, setOrdering] = useState(false);
 
@@ -33,13 +33,20 @@ const LabsTab: React.FC = () => {
         <h3 className="text-white font-bold mb-4 flex items-center gap-2">
           <TestTube size={18} className="text-purple" /> Quick Lab Order
         </h3>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-end">
           <div className="flex-1">
+            <label className="text-xs text-text-secondary uppercase mb-1 block">Search Catalog</label>
             <Input 
-              placeholder="Test Names (e.g. CBC, Lipid Panel, TSH)..." 
+              placeholder="Test Names (e.g. CBC, Lipid Panel)..." 
               value={tests}
               onChange={e => setTests(e.target.value)}
+              list="labs-catalog"
             />
+            <datalist id="labs-catalog">
+                {catalogs.labTests.map(l => (
+                    <option key={l.id} value={l.name}>{l.code}</option>
+                ))}
+            </datalist>
             <p className="text-[10px] text-text-secondary mt-1 pl-1">Separate multiple tests with commas</p>
           </div>
           <Button 

@@ -13,6 +13,11 @@ const serializeChart = (data, role) => {
 };
 
 export const ClinicalService = {
+  async getCatalogs() {
+      // Return master lists for meds, labs, services
+      return await Repo.getCatalogs();
+  },
+
   async searchPatients(query) {
     return await Repo.searchPatients(query || "");
   },

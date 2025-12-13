@@ -11,6 +11,13 @@ export const clinicalRouter = Router();
 // Apply auth to all clinical routes
 clinicalRouter.use(authRequired);
 
+// --- Clinical Catalogs (Pillar 1) ---
+clinicalRouter.get(
+  "/catalogs",
+  // Cache-Control headers could be added here in a real app
+  ClinicalController.getCatalogs
+);
+
 // --- Patient Management ---
 clinicalRouter.get(
   "/patients",

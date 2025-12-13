@@ -28,6 +28,10 @@ export interface CloseAppointmentPayload {
 }
 
 export const clinicalService = {
+  getCatalogs: () => {
+    return api.get<any>("/clinical/catalogs");
+  },
+
   searchPatients: (query = "") => {
     return api.get<any[]>("/clinical/patients", { query });
   },
