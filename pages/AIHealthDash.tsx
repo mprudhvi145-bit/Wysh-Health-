@@ -1,13 +1,16 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { GlassCard, Button, Badge, Modal } from '../components/UI';
 import { HolographicModel } from '../components/3DVisuals';
 import { 
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, 
   ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  ComposedChart, Bar, Line, Legend
+  ComposedChart, Bar, Line, Legend, LineChart, Brush, ReferenceLine
 } from 'recharts';
-import { Activity, Heart, Zap, Brain, Thermometer, Download, Eye, RefreshCw, FileText, User, Calendar, Shield, Stethoscope } from 'lucide-react';
+import { 
+  Activity, Heart, Zap, Brain, Thermometer, Download, Eye, RefreshCw, 
+  FileText, User, Calendar, Shield, Stethoscope, Upload, AlertCircle, CheckCircle2 
+} from 'lucide-react';
 
 const RISK_DATA = [
   { subject: 'Cardiac', A: 120, fullMark: 150 },
@@ -53,12 +56,52 @@ const PREDICTION_DATA = Array.from({ length: 12 }, (_, i) => {
   };
 });
 
+// Generate realistic ECG data points
+const generateECGData = () => {
+  const data = [];
+  // 10 seconds at ~50Hz simulated resolution
+  for (let i = 0; i < 500; i++) {
+    const t = i % 50; // One beat every 50 ticks
+    let v = 0;
+    
+    // Baseline wander
+    v += Math.sin(i / 80) * 0.05;
+    
+    // P wave (small upward)
+    if (t > 5 && t < 15) v += 0.15 * Math.sin((t - 5) * Math.PI / 10);
+    // Q (small downward)
+    if (t > 18 && t < 20) v -= 0.15;
+    // R (sharp upward)
+    if (t >= 20 && t < 24) v += 1.5 * (1 - Math.abs(t - 22) / 2);
+    // S (sharp downward)
+    if (t >= 24 && t < 26) v -= 0.3;
+    // T wave (medium upward)
+    if (t > 32 && t < 42) v += 0.25 * Math.sin((t - 32) * Math.PI / 10);
+
+    // Random noise
+    v += (Math.random() - 0.5) * 0.05;
+    
+    data.push({
+      time: (i * 0.02).toFixed(2),
+      voltage: v
+    });
+  }
+  return data;
+};
+
 export const AIHealthDash: React.FC = () => {
   // State
   const [vitalsData, setVitalsData] = useState(INITIAL_VITALS);
   const [isLive, setIsLive] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [visibleSeries, setVisibleSeries] = useState({ heart: true, temp: true });
+
+  // ECG State
+  const [ecgFile, setEcgFile] = useState<File | null>(null);
+  const [analyzingEcg, setAnalyzingEcg] = useState(false);
+  const [ecgResult, setEcgResult] = useState<{status: string, confidence: number, detail: string, color: 'red' | 'green'} | null>(null);
+
+  const ecgWaveformData = useMemo(() => generateECGData(), []);
 
   // Real-time Simulation Effect
   useEffect(() => {
@@ -107,6 +150,38 @@ export const AIHealthDash: React.FC = () => {
     setVisibleSeries(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // ECG Handlers
+  const handleEcgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setEcgFile(e.target.files[0]);
+      setEcgResult(null);
+    }
+  };
+
+  const runEcgAnalysis = () => {
+    if (!ecgFile) return;
+    setAnalyzingEcg(true);
+    setTimeout(() => {
+      setAnalyzingEcg(false);
+      const isRisk = Math.random() > 0.7; // 30% chance of risk for demo
+      if (!isRisk) {
+         setEcgResult({
+             status: 'Normal Sinus Rhythm',
+             confidence: 99.1,
+             detail: 'Regular rhythm. PR interval and QRS duration within normal limits. No ST-segment deviation.',
+             color: 'green'
+         });
+      } else {
+         setEcgResult({
+             status: 'Myocardial Ischemia Alert',
+             confidence: 88.4,
+             detail: 'ST-segment depression observed in lateral leads (V5, V6). Immediate clinical correlation recommended.',
+             color: 'red'
+         });
+      }
+    }, 2500);
+  };
+
   return (
     <div className="min-h-screen p-6 space-y-8">
       
@@ -129,7 +204,7 @@ export const AIHealthDash: React.FC = () => {
                 Export Data
             </Button>
             <Button variant="secondary" onClick={() => setIsModalOpen(true)} icon={<Eye size={16}/>}>
-                Patient Details
+                View Patient Details
             </Button>
         </div>
       </div>
@@ -232,6 +307,148 @@ export const AIHealthDash: React.FC = () => {
                 </div>
             </GlassCard>
 
+             {/* AI ECG Analysis Section */}
+            <GlassCard>
+                <div className="flex items-center gap-3 mb-6">
+                     <div className="p-2 bg-teal/10 rounded-lg text-teal">
+                        <Activity size={20} />
+                     </div>
+                     <div>
+                        <h3 className="text-white font-bold text-lg">AI ECG Analysis</h3>
+                        <p className="text-text-secondary text-xs">Deep learning arrhythmia detection</p>
+                     </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Upload Zone */}
+                    <div className="relative group">
+                        <input 
+                            type="file" 
+                            accept=".pdf,image/*" 
+                            onChange={handleEcgUpload}
+                            className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
+                        />
+                        <div className={`
+                            border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all duration-300
+                            ${ecgFile ? 'border-teal bg-teal/5' : 'border-white/10 hover:border-teal/50 hover:bg-white/5'}
+                        `}>
+                            <div className={`p-4 rounded-full mb-3 transition-colors ${ecgFile ? 'bg-teal/20 text-teal' : 'bg-white/5 text-text-secondary group-hover:text-white'}`}>
+                                {ecgFile ? <FileText size={24} /> : <Upload size={24} />}
+                            </div>
+                            <p className="text-white font-medium mb-1">
+                                {ecgFile ? ecgFile.name : 'Upload ECG Trace'}
+                            </p>
+                            <p className="text-xs text-text-secondary">
+                                {ecgFile ? `${(ecgFile.size / 1024).toFixed(1)} KB` : 'Supports PDF, PNG, JPG'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Controls & Results */}
+                    <div className="flex flex-col justify-center">
+                        {!ecgResult ? (
+                            <div className="space-y-4">
+                                <p className="text-sm text-text-secondary">
+                                    Upload a 12-lead ECG to detect over 20 cardiac abnormalities. Wysh AI utilizes a transformer-based model trained on 1M+ clinical samples.
+                                </p>
+                                <Button 
+                                    variant="primary" 
+                                    onClick={runEcgAnalysis}
+                                    disabled={!ecgFile || analyzingEcg}
+                                    className="w-full justify-center"
+                                    icon={analyzingEcg ? <RefreshCw className="animate-spin"/> : <Zap />}
+                                >
+                                    {analyzingEcg ? 'Analyzing Waveforms...' : 'Run AI Diagnostics'}
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className={`p-4 rounded-xl border animate-fadeIn ${
+                                ecgResult.color === 'green' 
+                                ? 'bg-green-500/10 border-green-500/20' 
+                                : 'bg-red-500/10 border-red-500/20'
+                            }`}>
+                                <div className="flex items-center gap-3 mb-2">
+                                    {ecgResult.color === 'green' ? (
+                                        <CheckCircle2 className="text-green-400" size={24} />
+                                    ) : (
+                                        <AlertCircle className="text-red-400" size={24} />
+                                    )}
+                                    <div>
+                                        <h4 className="text-white font-bold">{ecgResult.status}</h4>
+                                        <p className={`text-xs ${ecgResult.color === 'green' ? 'text-green-300' : 'text-red-300'}`}>
+                                            AI Confidence: {ecgResult.confidence}%
+                                        </p>
+                                    </div>
+                                </div>
+                                <p className="text-sm text-text-secondary mb-4 border-t border-white/5 pt-2 mt-2">
+                                    {ecgResult.detail}
+                                </p>
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => { setEcgFile(null); setEcgResult(null); }}
+                                    className="w-full text-xs h-9"
+                                >
+                                    Analyze Another
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </GlassCard>
+
+            {/* Interactive ECG Visualizer */}
+            <GlassCard className="h-[350px]">
+                <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-3">
+                         <div className="p-2 bg-green-500/10 rounded-lg text-green-400">
+                            <Activity size={20} />
+                         </div>
+                         <div>
+                            <h3 className="text-white font-bold text-lg">Interactive ECG Visualizer</h3>
+                            <p className="text-text-secondary text-xs">Lead II • 500Hz • Pan/Zoom Enabled</p>
+                         </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1 text-[10px] text-green-400 bg-green-500/10 px-2 py-1 rounded border border-green-500/20">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/> LIVE FEED
+                        </span>
+                    </div>
+                </div>
+                
+                <div className="h-[250px] w-full bg-[#050607] rounded-lg border border-white/5 relative overflow-hidden">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={ecgWaveformData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                            <CartesianGrid stroke="#1F2937" strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="time" hide />
+                            <YAxis domain={[-2, 3]} hide />
+                            <Tooltip 
+                                contentStyle={{ backgroundColor: '#1D2329', border: '1px solid #333' }}
+                                labelStyle={{ color: '#9CA3AF' }}
+                                itemStyle={{ color: '#34D399' }}
+                                formatter={(val: number) => [val.toFixed(2) + ' mV', 'Voltage']}
+                            />
+                            <ReferenceLine y={0} stroke="#374151" strokeDasharray="3 3" />
+                            <Line 
+                                type="monotone" 
+                                dataKey="voltage" 
+                                stroke="#34D399" 
+                                strokeWidth={2} 
+                                dot={false} 
+                                isAnimationActive={false}
+                            />
+                            <Brush 
+                                dataKey="time" 
+                                height={30} 
+                                stroke="#4D8B83"
+                                fill="#1D2329"
+                                tickFormatter={(val) => val + 's'}
+                                travellerWidth={10}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+            </GlassCard>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <GlassCard>
                     <h3 className="text-white font-bold mb-4 flex items-center gap-2">
@@ -279,7 +496,17 @@ export const AIHealthDash: React.FC = () => {
             {/* Vitals Trends Chart (Area) with Interactive Legend */}
             <GlassCard className="h-[350px]">
                 <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-white font-bold text-lg">Vitals Trends (Intraday)</h3>
+                    <div className="flex items-center gap-4">
+                        <h3 className="text-white font-bold text-lg">Vitals Trends (Intraday)</h3>
+                        <Button 
+                            variant="outline" 
+                            onClick={handleExport} 
+                            className="!px-3 !py-1 !text-xs !h-8 opacity-60 hover:opacity-100 border-white/10 hover:border-teal/50" 
+                            icon={<Download size={12}/>}
+                        >
+                            Export CSV
+                        </Button>
+                    </div>
                     <div className="flex gap-4">
                         <button 
                           onClick={() => toggleSeries('heart')}
@@ -444,6 +671,17 @@ export const AIHealthDash: React.FC = () => {
                         <Calendar size={12} /> Next Appointment
                     </p>
                     <p className="text-teal font-medium">Tomorrow, 10:00 AM</p>
+                </div>
+            </div>
+
+            {/* Allergies Section */}
+            <div className="p-4 bg-red-500/10 rounded-lg border border-red-500/20">
+                <p className="flex items-center gap-2 text-xs text-red-300 uppercase tracking-wider mb-2">
+                    <AlertCircle size={14} /> Critical Allergies
+                </p>
+                <div className="flex gap-2">
+                    <span className="px-3 py-1 bg-red-500/20 text-red-300 border border-red-500/30 rounded text-sm font-medium">Penicillin</span>
+                    <span className="px-3 py-1 bg-red-500/20 text-red-300 border border-red-500/30 rounded text-sm font-medium">Peanuts</span>
                 </div>
             </div>
 

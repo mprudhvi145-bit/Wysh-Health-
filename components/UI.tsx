@@ -35,8 +35,9 @@ export const Button: React.FC<{
   className?: string;
   icon?: React.ReactNode;
   type?: 'button' | 'submit' | 'reset';
-}> = ({ children, variant = 'primary', onClick, className = '', icon, type = 'button' }) => {
-  const baseStyle = "px-6 py-3 rounded-lg font-display font-medium transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden group";
+  disabled?: boolean;
+}> = ({ children, variant = 'primary', onClick, className = '', icon, type = 'button', disabled }) => {
+  const baseStyle = "px-6 py-3 rounded-lg font-display font-medium transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed";
   
   const variants = {
     primary: "bg-teal text-white hover:bg-teal-glow hover:shadow-[0_0_20px_rgba(77,139,131,0.5)] border border-transparent",
@@ -48,10 +49,11 @@ export const Button: React.FC<{
     <button 
       type={type}
       onClick={onClick} 
+      disabled={disabled}
       className={`${baseStyle} ${variants[variant]} ${className}`}
     >
       <span className="relative z-10 flex items-center gap-2">{icon}{children}</span>
-      {variant === 'primary' && (
+      {variant === 'primary' && !disabled && (
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
       )}
     </button>
