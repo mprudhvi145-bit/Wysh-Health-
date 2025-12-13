@@ -6,6 +6,11 @@ import rateLimit from 'express-rate-limit';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
+import { randomUUID } from 'crypto';
+
+// Bootstrap & Checks
+import { envCheck } from './bootstrap/envCheck.js';
+import { prisma } from './lib/prisma.js';
 
 // Import new modular routes
 import { clinicalRouter } from './modules/clinical/routes.js';
@@ -15,9 +20,12 @@ import { AuditService } from './modules/audit/service.js';
 
 dotenv.config();
 
+// 1. Fail-fast if config is missing
+envCheck();
+
 const app = express();
 const PORT = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET || 'wysh-secure-dev-secret-key-change-in-prod';
+const JWT_SECRET = process.env.JWT_SECRET; // Checked in envCheck
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
 // Persistence Mode Check
@@ -37,8 +45,24 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // --- Middleware ---
 
+// 2. Request Logging (Structured, No PII)
+app.use((req, res, next) => {
+  req.id = randomUUID();
+  const start = Date.now();
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    // Log format: [ID] METHOD PATH STATUS DURATION
+    // In prod, ship this to a log aggregator
+    console.log(`[REQ] ${req.id} | ${req.method} ${req.path} ${res.statusCode} (${duration}ms)`);
+  });
+  
+  next();
+});
+
+// 3. Strict CORS
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000', 
+  origin: process.env.CLIENT_URL, // Must be explicit in production
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -52,10 +76,37 @@ app.use('/api/', rateLimit({
   limit: 100,
 }));
 
+// --- SYSTEM ROUTES ---
+
+// 4. Health Check (Load Balancer Safe)
+app.get('/health', async (req, res) => {
+    const health = {
+        status: 'ok',
+        uptime: process.uptime(),
+        timestamp: new Date(),
+        db: 'n/a'
+    };
+
+    if (process.env.USE_DB === 'true') {
+        try {
+            await prisma.$queryRaw`SELECT 1`;
+            health.db = 'connected';
+        } catch (e) {
+            health.db = 'disconnected';
+            health.status = 'degraded';
+            return res.status(503).json(health);
+        }
+    } else {
+        health.db = 'memory_mode';
+    }
+
+    res.json(health);
+});
+
 // --- MOUNT MODULAR ROUTES ---
 app.use('/api/clinical', clinicalRouter);
 
-// Debug Route for Audit Logs (Dev only)
+// Debug Route for Audit Logs (Secure)
 app.get('/api/audit/mine', authRequired, (req, res) => {
   const logs = AuditService.listByActor(req.user.id);
   res.json({ data: logs });
@@ -76,6 +127,10 @@ app.post('/api/auth/login', (req, res) => {
   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
   
   const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '24h' });
+  
+  // Audit Login
+  AuditService.log(user.id, 'LOGIN', 'auth_system');
+  
   res.json({ user, token });
 });
 
@@ -91,6 +146,9 @@ app.post('/api/auth/register', (req, res) => {
   users.push(newUser);
   
   const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role, name: newUser.name }, JWT_SECRET, { expiresIn: '24h' });
+  
+  AuditService.log(newUser.id, 'REGISTER', 'auth_system');
+  
   res.status(201).json({ user: newUser, token });
 });
 
@@ -113,6 +171,10 @@ app.post('/api/ai/health-insight', authRequired, async (req, res) => {
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
+    
+    // Log AI Usage
+    AuditService.log(req.user.id, 'GENERATE_INSIGHT', 'gemini_flash');
+    
     res.json({ text: response.text });
   } catch (err) {
     res.status(500).json({ error: 'AI Error' });
@@ -135,6 +197,9 @@ app.post('/api/ai/document-extract', authRequired, upload.single('file'), async 
     });
     
     let jsonStr = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    AuditService.log(req.user.id, 'EXTRACT_DOC_DATA', `doc_type:${req.body.documentType}`);
+    
     res.json({ success: true, data: JSON.parse(jsonStr) });
   } catch (err) {
     console.error(err);
