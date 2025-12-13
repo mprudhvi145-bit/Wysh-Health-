@@ -1,36 +1,50 @@
+import { config } from '../config';
 
-import { GoogleGenAI } from "@google/genai";
+// Helper to determine backend URL
+const getBackendUrl = () => {
+  // Check if we are in development and if a local backend is expected
+  // In production, this would likely be part of the main API base URL
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:3001/api/ai/health-insight';
+  }
+  return `${config.apiBaseUrl}/ai/health-insight`;
+};
+
+interface AIResponse {
+  text?: string;
+  error?: string;
+  status?: string;
+}
 
 export const generateHealthInsight = async (prompt: string): Promise<string> => {
-  if (!process.env.API_KEY) {
-    console.warn("Wysh Care: API_KEY is missing from environment variables.");
-    return "AI Configuration Error: API Key not found in environment.";
-  }
-
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
+    const response = await fetch(getBackendUrl(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt,
         systemInstruction: "You are Wysh AI, a futuristic medical assistant. Provide concise, professional, and data-driven medical or administrative insights. Keep responses under 100 words.",
-      }
+      }),
     });
-    return response.text || "No insight generated.";
+
+    const data: AIResponse = await response.json();
+
+    if (!response.ok) {
+      console.warn("AI Service Warning:", data.error);
+      return data.error || "Unable to generate insight.";
+    }
+
+    return data.text || "No insight generated.";
   } catch (error) {
-    console.error("Gemini Error:", error);
+    console.error("AI Network Error:", error);
     return "System Offline: Unable to contact neural core.";
   }
 };
 
 export const analyzeMedicalDocument = async (fileType: string, textContent: string): Promise<string> => {
-  if (!process.env.API_KEY) {
-    return "AI Module Offline: Please configure API_KEY.";
-  }
-
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const prompt = `
       Analyze the following medical text extracted from a ${fileType}. 
       Extract key findings, diagnoses, medications, and abnormal lab values. 
@@ -40,16 +54,27 @@ export const analyzeMedicalDocument = async (fileType: string, textContent: stri
       ${textContent}
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
+    const response = await fetch(getBackendUrl(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt,
         systemInstruction: "You are an expert Clinical Documentation Improvement (CDI) specialist. Summarize medical data accurately.",
-      }
+      }),
     });
-    return response.text || "Could not analyze document.";
+
+    const data: AIResponse = await response.json();
+
+    if (!response.ok) {
+      console.warn("Document Analysis Warning:", data.error);
+      return data.error || "Could not analyze document.";
+    }
+
+    return data.text || "No analysis available.";
   } catch (error) {
-    console.error("Gemini Analysis Error:", error);
-    return "Analysis Failed: Neural network interruption.";
+    console.error("Document Analysis Network Error:", error);
+    return "Analysis Failed: Connection interrupted.";
   }
 };

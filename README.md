@@ -31,6 +31,7 @@ To replace fragmented legacy hospital systems with a cohesive, AI-first operatin
 ## 🛠 Tech Stack
 
 *   **Frontend**: React 18, TypeScript, Tailwind CSS
+*   **Backend**: Node.js, Express (AI Proxy)
 *   **AI Engine**: Google Gemini API (@google/genai)
 *   **Visuals**: Three.js, Recharts, Lucide React
 *   **Routing**: React Router v6
@@ -40,14 +41,11 @@ To replace fragmented legacy hospital systems with a cohesive, AI-first operatin
 
 ```
 src/
-├── components/       # Reusable UI components (GlassCard, Button, 3DVisuals)
-├── config/           # Environment configuration
-├── context/          # Auth and Global State
-├── features/         # Feature-based modules (Appointments, Doctors, Dashboard)
+├── components/       # Reusable UI components
+├── features/         # Feature-based modules
 ├── pages/            # Top-level route pages
-├── services/         # API and Mock services
-├── types/            # TypeScript definitions
-└── utils/            # Constants and helpers
+├── services/         # Frontend services (API, Mock, AI)
+server/               # Node.js AI Proxy Server
 ```
 
 ## 🔧 Setup & Installation
@@ -58,19 +56,36 @@ src/
     cd wysh-care-os
     ```
 
-2.  **Install dependencies**
+2.  **Install Frontend dependencies**
     ```bash
     npm install
     ```
 
-3.  **Environment Configuration**
-    Create a `.env` file in the root directory:
-    ```env
-    API_KEY=your_google_gemini_api_key
-    API_BASE_URL=https://api.wyshcare.com/v1
+3.  **Install Backend dependencies**
+    ```bash
+    cd server
+    npm install
+    cd ..
     ```
 
-4.  **Run Locally**
+4.  **Environment Configuration**
+    
+    Create a `.env` file in the **server/** directory:
+    ```env
+    API_KEY=your_google_gemini_api_key
+    PORT=3001
+    CLIENT_URL=http://localhost:3000
+    ```
+
+5.  **Run Application**
+    
+    Terminal 1 (Backend):
+    ```bash
+    cd server
+    npm run dev
+    ```
+
+    Terminal 2 (Frontend):
     ```bash
     npm run dev
     ```
@@ -85,7 +100,7 @@ npm run build
 **Checklist:**
 - [x] Environment variables configured
 - [x] Error boundaries active
-- [x] Mock services toggleable via config
+- [x] Backend proxy secured
 - [x] Assets optimized
 
 ## 🗺 Roadmap
