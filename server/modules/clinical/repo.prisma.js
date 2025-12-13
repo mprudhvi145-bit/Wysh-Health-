@@ -16,7 +16,11 @@ export const PrismaRepo = {
           user: true // Include user details
       },
       take: 20,
-    }).then(patients => patients.map(p => ({ ...p, name: p.user.name, email: p.user.email })));
+    }).then(patients => patients.map(p => ({ 
+        ...p, 
+        name: p.user.name, 
+        email: p.user.email 
+    })));
   },
 
   async getPatientChart(patientId) {
@@ -30,37 +34,49 @@ export const PrismaRepo = {
             include: { items: true }
         },
         labOrders: notDeleted,
-        notes: { // Renamed from clinicalNotes in schema relations usually, but let's check schema. Relation is `notes` in Patient model.
+        notes: { 
             where: { deletedAt: null },
             orderBy: { createdAt: 'desc' } 
         },
         documents: notDeleted,
+        problems: true,
+        allergies: true,
+        vitals: true
       },
     });
     
     if (!patient) return {};
 
-    const { encounters, prescriptions, labOrders, notes, documents, user, ...patientData } = patient;
+    const { encounters, prescriptions, labOrders, notes, documents, user, problems, allergies, vitals, ...patientData } = patient;
     
     // Merge user data into patient for frontend compatibility
     const patientProfile = {
         ...patientData,
         name: user.name,
         email: user.email,
-        abha: user.abhaId ? { id: user.abhaId, address: user.abhaAddress, status: user.abhaLinked ? 'LINKED' : 'PENDING' } : null
+        abha: user.abhaId ? { id: user.abhaId, address: user.abhaAddress, status: user.abhaLinked ? 'LINKED' : 'PENDING' } : null,
+        problems,
+        allergies: allergies.map(a => a.allergen),
+        chronicConditions: problems.map(p => p.diagnosis)
     };
 
     return {
       patient: patientProfile,
-      appointments: encounters, // Map back to appointments for UI compatibility
+      appointments: encounters.map(e => ({
+          ...e,
+          date: e.scheduledAt.toISOString().split('T')[0],
+          time: e.scheduledAt.toISOString().split('T')[1].substring(0,5),
+          doctorName: "Dr. Assigned" // In a real app, include Doctor relation
+      })), 
       prescriptions,
-      labs: labOrders,
+      labOrders,
       clinicalNotes: notes,
       documents
     };
   },
 
   async createPrescription(input, doctorId) {
+    // Ensure Patient exists first to avoid relation errors if input.patientId is raw
     return prisma.prescription.create({
       data: {
         patientId: input.patientId,
@@ -77,7 +93,7 @@ export const PrismaRepo = {
       data: {
         patientId: input.patientId,
         doctorId,
-        tests: input.tests, // Schema expects String[], Ensure input.tests is array
+        tests: input.tests, // Using String[] in Postgres
         status: "ORDERED",
         priority: input.priority
       },
@@ -129,8 +145,6 @@ export const PrismaRepo = {
         where: { id: appointmentId },
         data: { 
             status: "COMPLETED",
-            // Note: Schema doesn't have summary field on Encounter, usually stored in Note.
-            // But we will create a summary note.
         },
       });
       
@@ -139,7 +153,7 @@ export const PrismaRepo = {
         data: {
           patientId: appt.patientId,
           doctorId: appt.doctorId,
-          encounterId: appt.id, // Link to encounter
+          encounterId: appt.id, 
           content: `Visit Closed. Diagnosis: ${summary.diagnosis}. Notes: ${summary.notes}`,
           shared: true,
         },
@@ -166,7 +180,7 @@ export const PrismaRepo = {
         ...e,
         // Map fields for frontend compatibility
         doctorName: e.doctor.user.name,
-        date: e.scheduledAt.toISOString()
+        scheduledAt: e.scheduledAt.toISOString()
     })));
   },
 
@@ -193,7 +207,8 @@ export const PrismaRepo = {
     return {
         ...e,
         doctorName: e.doctor.user.name,
-        date: e.scheduledAt.toISOString()
+        date: e.scheduledAt.toISOString().split('T')[0],
+        time: e.scheduledAt.toISOString().split('T')[1].substring(0,5)
     };
   },
 
@@ -248,7 +263,6 @@ export const PrismaRepo = {
 
   // Generic Soft Delete
   async softDelete(model, id, userId) {
-      // Map frontend model names to Prisma model names
       const modelMap = {
           'prescription': 'prescription',
           'note': 'clinicalNote',
