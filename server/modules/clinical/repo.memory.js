@@ -132,5 +132,9 @@ export const Repo = {
         if (filters.patientId) match = match && a.patientId === filters.patientId;
         return match;
      });
+  },
+
+  getAppointmentById(id) {
+    return mem.appointments.find(a => a.id === id);
   }
 };

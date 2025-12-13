@@ -53,6 +53,11 @@ clinicalRouter.get(
     ClinicalController.getAppointments
 );
 
+clinicalRouter.get(
+  "/appointments/:id",
+  ClinicalController.getAppointmentById
+);
+
 clinicalRouter.post(
     "/appointments",
     audit("CREATE", "appointment"),
@@ -67,11 +72,14 @@ clinicalRouter.post(
 );
 
 // --- Patient Views (The 'Mine' endpoints) ---
-// Note: These map to finding resources by the current user's patient ID
-clinicalRouter.get("/prescriptions/mine", (req, res) => {
-    // Using mem directly or service wrapper to filter by patient
-    // For now, this logic is partly in repo.memory.js getPatientChart logic 
-    // but simplified here for the route requirement.
-    // In a full implementation, we'd add a Service method for this.
-    res.json({ data: [] }); // Placeholder, logic moved to repo/service if needed
-});
+clinicalRouter.get(
+  "/prescriptions/mine", 
+  audit("VIEW", "my_prescriptions"),
+  ClinicalController.getMyPrescriptions
+);
+
+clinicalRouter.get(
+  "/labs/mine", 
+  audit("VIEW", "my_labs"),
+  ClinicalController.getMyLabs
+);

@@ -48,5 +48,19 @@ export const ClinicalService = {
 
   createAppointment(dto) {
       return Repo.createAppointment(dto);
+  },
+
+  getPrescriptionsForPatient(userId) {
+    const patientId = userId === 'usr_pat_1' ? 'p1' : userId;
+    return Repo.getPatientChart(patientId).prescriptions;
+  },
+
+  getLabsForPatient(userId) {
+    const patientId = userId === 'usr_pat_1' ? 'p1' : userId;
+    return Repo.getPatientChart(patientId).labs;
+  },
+
+  getAppointmentById(id) {
+    return Repo.getAppointmentById(id);
   }
 };

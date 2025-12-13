@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid 
 } from 'recharts';
-import { MessageSquare, Bell, FileText, Pill, Calendar } from 'lucide-react';
+import { MessageSquare, Bell, FileText, Pill, Calendar, TestTube } from 'lucide-react';
 import { GlassCard, Button } from '../../components/UI';
 import { MOCK_DOCTORS } from '../../utils/constants';
 import { generateHealthInsight } from '../../services/geminiService';
@@ -95,17 +94,18 @@ export const PatientDashboard: React.FC = () => {
 
            <GlassCard 
              className="flex flex-col items-center justify-center p-4 cursor-pointer hover:bg-white/5 transition-colors group"
-             onClick={() => navigate('/ai-health')}
+             onClick={() => navigate('/dashboard/labs')}
              hoverEffect={false}
            >
              <div className="p-3 bg-blue-500/10 rounded-full text-blue-400 mb-2 group-hover:scale-110 transition-transform">
-               <MessageSquare size={24} />
+               <TestTube size={24} />
              </div>
-             <span className="text-sm font-bold text-white">AI Consult</span>
+             <span className="text-sm font-bold text-white">Lab Results</span>
            </GlassCard>
 
            <GlassCard 
              className="flex flex-col items-center justify-center p-4 cursor-pointer hover:bg-white/5 transition-colors group"
+             onClick={() => navigate('/dashboard/prescriptions')}
              hoverEffect={false}
            >
              <div className="p-3 bg-yellow-500/10 rounded-full text-yellow-400 mb-2 group-hover:scale-110 transition-transform">

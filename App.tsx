@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
@@ -22,6 +21,9 @@ import { HealthRecords } from './features/patient/pages/HealthRecords';
 import { PatientManager } from './features/doctor/pages/PatientManager';
 import { ScheduleManager } from './features/doctor/pages/ScheduleManager';
 import { ProfilePage } from './features/profile/ProfilePage';
+import { PatientPrescriptions } from './features/patient/pages/PatientPrescriptions';
+import { PatientLabs } from './features/patient/pages/PatientLabs';
+import { AppointmentSummary } from './features/patient/pages/AppointmentSummary';
 
 // Placeholder for Products page
 const Products = () => (
@@ -72,6 +74,18 @@ const App: React.FC = () => {
                     </ProtectedRoute>
                 } />
 
+                <Route path="/dashboard/prescriptions" element={
+                    <ProtectedRoute>
+                        <PatientPrescriptions />
+                    </ProtectedRoute>
+                } />
+
+                <Route path="/dashboard/labs" element={
+                    <ProtectedRoute>
+                        <PatientLabs />
+                    </ProtectedRoute>
+                } />
+
                 <Route path="/appointments" element={
                     <ProtectedRoute>
                         <AppointmentListPage />
@@ -81,6 +95,12 @@ const App: React.FC = () => {
                 <Route path="/appointments/:id" element={
                     <ProtectedRoute>
                         <AppointmentDetail />
+                    </ProtectedRoute>
+                } />
+
+                <Route path="/appointments/:id/summary" element={
+                    <ProtectedRoute>
+                        <AppointmentSummary />
                     </ProtectedRoute>
                 } />
 

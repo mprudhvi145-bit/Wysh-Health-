@@ -49,5 +49,21 @@ export const ClinicalController = {
   createAppointment(req, res) {
       const result = ClinicalService.createAppointment(req.body);
       res.status(201).json({ data: result });
+  },
+
+  getMyPrescriptions(req, res) {
+    const data = ClinicalService.getPrescriptionsForPatient(req.user.id);
+    res.json({ data });
+  },
+
+  getMyLabs(req, res) {
+    const data = ClinicalService.getLabsForPatient(req.user.id);
+    res.json({ data });
+  },
+
+  getAppointmentById(req, res) {
+    const data = ClinicalService.getAppointmentById(req.params.id);
+    if (!data) return res.status(404).json({error: "Appointment not found"});
+    res.json({ data });
   }
 };
