@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthContextType, LoginCredentials, SignupCredentials, User } from '../types/auth';
 import { authService } from '../services/authService';
@@ -11,15 +10,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const initAuth = () => {
-      const currentUser = authService.getCurrentUser();
-      const isAuth = authService.isAuthenticated();
-      
-      if (isAuth && currentUser) {
-        setUser(currentUser);
-        setIsAuthenticated(true);
+    const initAuth = async () => {
+      try {
+        // Attempt to fetch fresh user data from backend using token
+        const currentUser = await authService.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+          setIsAuthenticated(true);
+        } else {
+          // Token invalid or expired
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error("Session restoration failed:", error);
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     initAuth();
@@ -36,10 +45,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithGoogle = async () => {
+  // Google Login is now called with the ID Token from the component
+  const loginWithGoogle = async (idToken?: string, role?: string) => {
     setIsLoading(true);
     try {
-      const response = await authService.loginWithGoogle();
+      if (!idToken) throw new Error("No Google Token provided");
+      const response = await authService.loginWithGoogle(idToken, role);
       setUser(response.user);
       setIsAuthenticated(true);
     } finally {

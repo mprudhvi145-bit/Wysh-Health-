@@ -1,9 +1,8 @@
 import { config } from '../config';
+import { authService } from './authService';
 
 // Helper to determine backend URL
 const getBackendUrl = () => {
-  // Check if we are in development and if a local backend is expected
-  // In production, this would likely be part of the main API base URL
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return 'http://localhost:3001/api/ai/health-insight';
   }
@@ -18,10 +17,13 @@ interface AIResponse {
 
 export const generateHealthInsight = async (prompt: string): Promise<string> => {
   try {
+    const token = authService.getToken();
+    
     const response = await fetch(getBackendUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
       },
       body: JSON.stringify({
         prompt,
@@ -45,6 +47,8 @@ export const generateHealthInsight = async (prompt: string): Promise<string> => 
 
 export const analyzeMedicalDocument = async (fileType: string, textContent: string): Promise<string> => {
   try {
+    const token = authService.getToken();
+    
     const prompt = `
       Analyze the following medical text extracted from a ${fileType}. 
       Extract key findings, diagnoses, medications, and abnormal lab values. 
@@ -58,6 +62,7 @@ export const analyzeMedicalDocument = async (fileType: string, textContent: stri
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
       },
       body: JSON.stringify({
         prompt,

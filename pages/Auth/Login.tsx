@@ -1,9 +1,8 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { GlassCard, Button, Input } from '../../components/UI';
-import { Activity, Lock, Mail, ArrowRight, AlertCircle, Globe } from 'lucide-react';
+import { Activity, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -15,6 +14,30 @@ export const Login: React.FC = () => {
 
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
+  // Initialize Google Button
+  useEffect(() => {
+    /* global google */
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+      google.accounts.id.initialize({
+        client_id: "YOUR_GOOGLE_CLIENT_ID_HERE", // Replace with env var in real app
+        callback: handleGoogleCallback
+      });
+      google.accounts.id.renderButton(
+        document.getElementById("google-signin-btn"),
+        { theme: "outline", size: "large", width: "100%", text: "continue_with" }
+      );
+    }
+  }, []);
+
+  const handleGoogleCallback = async (response: any) => {
+      try {
+          await loginWithGoogle(response.credential);
+          navigate(from, { replace: true });
+      } catch (err: any) {
+          setError(err.message || 'Google authentication failed.');
+      }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -22,17 +45,8 @@ export const Login: React.FC = () => {
     try {
       await login({ email, password });
       navigate(from, { replace: true });
-    } catch (err) {
-      setError('Authentication failed. Please verify credentials.');
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    try {
-      await loginWithGoogle();
-      navigate(from, { replace: true });
-    } catch (err) {
-      setError('Google authentication failed.');
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed. Please verify credentials.');
     }
   };
 
@@ -105,16 +119,12 @@ export const Login: React.FC = () => {
             </div>
           </div>
 
-          <Button 
-            type="button" 
-            variant="outline"
-            className="w-full justify-center bg-white/5 hover:bg-white/10" 
-            disabled={isLoading}
-            onClick={handleGoogleLogin}
-            icon={<Globe size={16} />}
-          >
-            Sign in with Google
-          </Button>
+          {/* Google Button Container */}
+          <div id="google-signin-btn" className="w-full flex justify-center h-10"></div>
+          {/* Fallback styling for button area */}
+          <style>{`
+            #google-signin-btn iframe { margin: 0 auto !important; } 
+          `}</style>
 
           <div className="text-center pt-4 border-t border-white/5 mt-6">
             <p className="text-text-secondary text-sm">

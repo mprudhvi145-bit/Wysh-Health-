@@ -1,75 +1,75 @@
-
 import { AuthResponse, LoginCredentials, SignupCredentials, User } from '../types/auth';
+import { config } from '../config';
 
 const TOKEN_KEY = 'wysh_auth_token';
 const USER_KEY = 'wysh_user_data';
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// Determine backend URL logic similar to geminiService
+const getBackendUrl = () => {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:3001/api/auth';
+  }
+  return `${config.apiBaseUrl}/auth`; // Fallback/Prod
+};
 
 export const authService = {
+  // 1. Login with Credentials
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    await delay(800);
+    const response = await fetch(`${getBackendUrl()}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials)
+    });
 
-    if (credentials.email.includes('error')) {
-      throw new Error('Invalid credentials');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Login failed');
     }
 
-    const mockUser: User = {
-      id: 'usr_' + Math.random().toString(36).substr(2, 9),
-      name: credentials.email.split('@')[0],
-      email: credentials.email,
-      role: credentials.email.includes('admin') ? 'admin' : credentials.email.includes('doc') ? 'doctor' : 'patient',
-      avatar: `https://ui-avatars.com/api/?name=${credentials.email}&background=4D8B83&color=fff`,
-      linkedGoogle: false
-    };
+    const data: AuthResponse = await response.json();
+    localStorage.setItem(TOKEN_KEY, data.token);
+    // Note: We don't necessarily need to store user in localStorage if we fetch 'me' on load, 
+    // but keeping it for fast initial render is fine.
+    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    return data;
+  },
 
-    if (mockUser.role === 'doctor') {
-      mockUser.specialty = 'General Medicine';
-      mockUser.licenseNumber = 'MD-99420';
+  // 2. Login/Register with Google
+  loginWithGoogle: async (idToken: string, role?: string): Promise<AuthResponse> => {
+    const response = await fetch(`${getBackendUrl()}/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: idToken, role })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Google Auth failed');
     }
 
-    const mockToken = 'jwt_mock_' + Math.random().toString(36).substr(2);
-    localStorage.setItem(TOKEN_KEY, mockToken);
-    localStorage.setItem(USER_KEY, JSON.stringify(mockUser));
-
-    return { user: mockUser, token: mockToken };
+    const data: AuthResponse = await response.json();
+    localStorage.setItem(TOKEN_KEY, data.token);
+    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    return data;
   },
 
-  loginWithGoogle: async (): Promise<AuthResponse> => {
-    await delay(1500); // Simulate OAuth popup duration
-    
-    const mockUser: User = {
-      id: 'usr_goog_' + Math.random().toString(36).substr(2, 9),
-      name: 'Google User',
-      email: 'user@gmail.com',
-      role: 'patient', // Default to patient for Google Sign-in
-      avatar: 'https://lh3.googleusercontent.com/a/default-user',
-      linkedGoogle: true
-    };
-
-    const mockToken = 'jwt_goog_' + Math.random().toString(36).substr(2);
-    localStorage.setItem(TOKEN_KEY, mockToken);
-    localStorage.setItem(USER_KEY, JSON.stringify(mockUser));
-
-    return { user: mockUser, token: mockToken };
-  },
-
+  // 3. Register with Credentials
   register: async (credentials: SignupCredentials): Promise<AuthResponse> => {
-    await delay(1000);
+    const response = await fetch(`${getBackendUrl()}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials)
+    });
 
-    const mockUser: User = {
-      id: 'usr_' + Math.random().toString(36).substr(2, 9),
-      name: credentials.name,
-      email: credentials.email,
-      role: credentials.role,
-      avatar: `https://ui-avatars.com/api/?name=${credentials.name}&background=8763FF&color=fff`
-    };
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Registration failed');
+    }
 
-    const mockToken = 'jwt_mock_' + Math.random().toString(36).substr(2);
-    localStorage.setItem(TOKEN_KEY, mockToken);
-    localStorage.setItem(USER_KEY, JSON.stringify(mockUser));
-
-    return { user: mockUser, token: mockToken };
+    const data: AuthResponse = await response.json();
+    localStorage.setItem(TOKEN_KEY, data.token);
+    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    return data;
   },
 
   logout: () => {
@@ -77,17 +77,42 @@ export const authService = {
     localStorage.removeItem(USER_KEY);
   },
 
-  getCurrentUser: (): User | null => {
-    const userStr = localStorage.getItem(USER_KEY);
-    if (!userStr) return null;
+  // 4. Verify Session (The "Me" endpoint)
+  getCurrentUser: async (): Promise<User | null> => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return null;
+
     try {
-      return JSON.parse(userStr);
-    } catch {
+      const response = await fetch(`${getBackendUrl()}/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem(USER_KEY, JSON.stringify(data.user)); // Update local cache
+        return data.user;
+      } else {
+        // Token invalid/expired
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+        return null;
+      }
+    } catch (e) {
+      console.error("Auth check failed", e);
+      // If backend is offline, maybe fallback to local storage user if desired, 
+      // but strictly securely we should fail. 
+      // For UX we might return the local user but mark as 'offline' in a real app.
       return null;
     }
   },
 
   isAuthenticated: (): boolean => {
     return !!localStorage.getItem(TOKEN_KEY);
+  },
+
+  getToken: (): string | null => {
+    return localStorage.getItem(TOKEN_KEY);
   }
 };

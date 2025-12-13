@@ -1,4 +1,3 @@
-
 export type Role = 'patient' | 'doctor' | 'admin';
 
 export interface User {
@@ -35,7 +34,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: (idToken?: string, role?: string) => Promise<void>;
   register: (credentials: SignupCredentials) => Promise<void>;
   logout: () => void;
 }

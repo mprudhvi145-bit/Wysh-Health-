@@ -1,9 +1,8 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { GlassCard, Button, Input } from '../../components/UI';
-import { Activity, Lock, Mail, User, Stethoscope, ArrowRight } from 'lucide-react';
+import { Activity, Mail, User, Stethoscope, ArrowRight, AlertCircle } from 'lucide-react';
 import { Role } from '../../types/auth';
 
 export const Signup: React.FC = () => {
@@ -11,16 +10,44 @@ export const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<Role>('patient');
-  const { register, isLoading } = useAuth();
+  const [error, setError] = useState('');
+  
+  const { register, loginWithGoogle, isLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Initialize Google Button
+  useEffect(() => {
+    /* global google */
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+        google.accounts.id.initialize({
+            client_id: "YOUR_GOOGLE_CLIENT_ID_HERE", // Replace with env var
+            callback: handleGoogleCallback
+        });
+        google.accounts.id.renderButton(
+            document.getElementById("google-signup-btn"),
+            { theme: "outline", size: "large", width: "100%", text: "signup_with" }
+        );
+    }
+  }, [role]); // Re-init if role logic needs it (though role is passed dynamically below)
+
+  const handleGoogleCallback = async (response: any) => {
+    try {
+        // Pass the selected role to the backend for new users
+        await loginWithGoogle(response.credential, role);
+        navigate('/dashboard');
+    } catch (err: any) {
+        setError(err.message || 'Google registration failed.');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     try {
       await register({ name, email, password, role });
       navigate('/dashboard');
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      setError(err.message || 'Registration failed.');
     }
   };
 
@@ -33,6 +60,13 @@ export const Signup: React.FC = () => {
           <h1 className="text-3xl font-display font-bold text-white">Initialize ID</h1>
           <p className="text-text-secondary mt-2">Join the future of healthcare</p>
         </div>
+
+        {error && (
+            <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2 text-red-300 text-sm">
+                <AlertCircle size={16} />
+                {error}
+            </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           
@@ -109,7 +143,19 @@ export const Signup: React.FC = () => {
             {isLoading ? 'Creating Identity...' : 'Create Account'}
           </Button>
 
-          <div className="text-center pt-4 border-t border-white/5">
+           <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-white/10" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-[#0D0F12] px-2 text-text-secondary">Or register with</span>
+            </div>
+          </div>
+
+          {/* Google Button Container */}
+          <div id="google-signup-btn" className="w-full flex justify-center h-10"></div>
+
+          <div className="text-center pt-4 border-t border-white/5 mt-6">
             <p className="text-text-secondary text-sm">
               Already have an ID?{' '}
               <Link to="/login" className="text-teal hover:text-white transition-colors font-medium">
