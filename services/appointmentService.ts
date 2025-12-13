@@ -1,5 +1,5 @@
 
-import { Appointment, TimeSlot } from '../types/appointment';
+import { Appointment, TimeSlot, AppointmentStatus } from '../types/appointment';
 
 const STORAGE_KEY = 'wysh_appointments';
 
@@ -52,18 +52,24 @@ export const appointmentService = {
     if (role === 'patient') {
       return all.filter(a => a.patientId === userId);
     } else if (role === 'doctor') {
-      // For demo purposes, we'll match by name if ID isn't set, or return all if admin/test
-      // Real app would strictly check doctorId.
-      return all; // Returning all for demo if doctor ID logic isn't strictly enforced in auth
+      // Mock: return all appointments for now as doctorId linkage is loose in mock auth
+      return all; 
     }
     
     return [];
   },
 
-  // Kept for backward compatibility or internal use
-  getMyAppointments: async (): Promise<Appointment[]> => {
-    await delay(400);
-    return appointmentService.getAllAppointmentsSync();
+  getAppointmentById: async (id: string): Promise<Appointment | undefined> => {
+    await delay(300);
+    const all = appointmentService.getAllAppointmentsSync();
+    return all.find(a => a.id === id);
+  },
+
+  updateStatus: async (id: string, status: AppointmentStatus): Promise<void> => {
+    await delay(500);
+    const existing = appointmentService.getAllAppointmentsSync();
+    const updated = existing.map(apt => apt.id === id ? { ...apt, status } : apt);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   },
 
   getAllAppointmentsSync: (): Appointment[] => {
@@ -71,10 +77,8 @@ export const appointmentService = {
     return data ? JSON.parse(data) : [];
   },
 
+  // Legacy method wrapper
   cancelAppointment: async (id: string): Promise<void> => {
-    await delay(500);
-    const existing = appointmentService.getAllAppointmentsSync();
-    const updated = existing.map(apt => apt.id === id ? { ...apt, status: 'cancelled' as const } : apt);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    return appointmentService.updateStatus(id, 'cancelled');
   }
 };

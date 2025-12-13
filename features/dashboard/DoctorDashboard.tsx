@@ -68,14 +68,14 @@ export const DoctorDashboard: React.FC = () => {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-             <GlassCard className="py-4 flex items-center gap-4">
+             <GlassCard className="py-4 flex items-center gap-4" onClick={() => navigate('/appointments')}>
                  <div className="p-3 bg-purple/10 rounded-lg text-purple"><Calendar size={20} /></div>
                  <div>
                      <h3 className="text-2xl font-bold text-white">{todayAppointments.length}</h3>
                      <p className="text-xs text-text-secondary uppercase">Appointments</p>
                  </div>
              </GlassCard>
-             <GlassCard className="py-4 flex items-center gap-4">
+             <GlassCard className="py-4 flex items-center gap-4" onClick={() => navigate('/doctor/patients')}>
                  <div className="p-3 bg-teal/10 rounded-lg text-teal"><Users size={20} /></div>
                  <div>
                      <h3 className="text-2xl font-bold text-white">{MOCK_PATIENTS.length}</h3>
@@ -113,7 +113,7 @@ export const DoctorDashboard: React.FC = () => {
              </div>
            </div>
            
-           <div className="bg-gradient-to-r from-purple/20 to-purple/5 border border-purple/20 rounded-2xl p-6 flex justify-between items-center">
+           <div className="bg-gradient-to-r from-purple/20 to-purple/5 border border-purple/20 rounded-2xl p-6 flex justify-between items-center cursor-pointer" onClick={() => navigate('/ai-health')}>
              <div>
                <h3 className="text-xl font-bold text-white mb-1">AI Research Hub</h3>
                <p className="text-text-secondary text-sm">Analyze complex cases with Gemini Medical Models.</p>
@@ -128,7 +128,10 @@ export const DoctorDashboard: React.FC = () => {
             {/* Left: Schedule */}
             <div className="lg:col-span-2 space-y-6">
                 <GlassCard className="min-h-[500px]">
-                    <h3 className="text-white font-bold mb-6">Today's Schedule</h3>
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-white font-bold">Today's Schedule</h3>
+                        <Button variant="outline" className="text-xs h-8" onClick={() => navigate('/doctor/schedule')}>Manage Slots</Button>
+                    </div>
                     
                     <div className="space-y-3">
                         {todayAppointments.length === 0 ? (
@@ -155,7 +158,7 @@ export const DoctorDashboard: React.FC = () => {
                                                 Join
                                             </Button>
                                         )}
-                                        <Button variant="outline" className="!py-1 !px-3 text-xs h-8">Details</Button>
+                                        <Button variant="outline" className="!py-1 !px-3 text-xs h-8" onClick={() => navigate(`/appointments/${apt.id}`)}>Details</Button>
                                     </div>
                                 </div>
                             ))

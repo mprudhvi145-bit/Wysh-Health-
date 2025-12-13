@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Menu, X, Activity, User, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, X, Activity, User, LogOut, ChevronDown, Bell } from 'lucide-react';
 import { NAV_ITEMS } from '../utils/constants';
 import { NeuralGrid } from './3DVisuals';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './UI';
+import { NotificationProvider } from '../context/NotificationContext';
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -32,6 +33,7 @@ const Navbar: React.FC = () => {
     if (user?.role === 'patient') {
       return [
         { label: 'Dashboard', path: '/dashboard' },
+        { label: 'Appointments', path: '/appointments' },
         { label: 'Records', path: '/dashboard/records' },
         { label: 'Find Doctor', path: '/doctors' },
         { label: 'AI Health', path: '/ai-health' },
@@ -41,8 +43,9 @@ const Navbar: React.FC = () => {
     if (user?.role === 'doctor') {
       return [
         { label: 'Console', path: '/dashboard' },
-        { label: 'Patients', path: '/doctor/patients' },
         { label: 'Schedule', path: '/doctor/schedule' },
+        { label: 'Patients', path: '/doctor/patients' },
+        { label: 'Appointments', path: '/appointments' },
       ];
     }
     
@@ -77,12 +80,15 @@ const Navbar: React.FC = () => {
           
           {isAuthenticated ? (
              <div className="flex items-center gap-4 border-l border-white/10 pl-6">
+                <button className="text-text-secondary hover:text-white">
+                  <Bell size={20} />
+                </button>
                 <div className="flex items-center gap-3 group cursor-pointer relative">
                     <div className="text-right hidden lg:block">
                         <p className="text-white text-sm font-bold leading-none">{user?.name}</p>
                         <p className="text-text-secondary text-xs uppercase tracking-wider">{user?.role}</p>
                     </div>
-                    <div className="w-9 h-9 rounded-full bg-teal/20 border border-teal text-teal flex items-center justify-center overflow-hidden">
+                    <div className="w-9 h-9 rounded-full bg-teal/20 border border-teal text-teal flex items-center justify-center overflow-hidden" onClick={() => navigate('/profile')}>
                         {user?.avatar ? (
                              <img src={user.avatar} alt="User" className="w-full h-full object-cover" />
                         ) : (
@@ -133,7 +139,7 @@ const Navbar: React.FC = () => {
           <div className="pt-4 flex flex-col gap-3">
               {isAuthenticated ? (
                   <>
-                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
+                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg" onClick={() => { navigate('/profile'); setIsOpen(false); }}>
                         <div className="w-8 h-8 rounded-full bg-teal/20 border border-teal flex items-center justify-center text-teal overflow-hidden">
                              {user?.avatar ? <img src={user.avatar} className="w-full h-full object-cover"/> : user?.name.charAt(0)}
                         </div>
@@ -167,10 +173,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   return (
     <div className="min-h-screen relative flex flex-col">
       <NeuralGrid />
-      <Navbar />
-      <main className="flex-grow pt-20 relative z-10">
-        {children}
-      </main>
+      <NotificationProvider>
+        <Navbar />
+        <main className="flex-grow pt-20 relative z-10">
+          {children}
+        </main>
+      </NotificationProvider>
       <footer className="bg-surgical-light border-t border-white/5 py-12 relative z-10">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>

@@ -63,7 +63,7 @@ export const PatientDashboard: React.FC = () => {
               <Bell className="text-text-secondary hover:text-white cursor-pointer" />
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
             </div>
-            <div className="w-10 h-10 rounded-full bg-teal/20 border border-teal flex items-center justify-center text-teal font-bold uppercase overflow-hidden">
+            <div className="w-10 h-10 rounded-full bg-teal/20 border border-teal flex items-center justify-center text-teal font-bold uppercase overflow-hidden cursor-pointer" onClick={() => navigate('/profile')}>
                {user?.avatar ? <img src={user.avatar} className="w-full h-full object-cover"/> : user?.name.substring(0, 2)}
             </div>
           </div>
@@ -199,9 +199,11 @@ export const PatientDashboard: React.FC = () => {
                 <span className="text-xs text-teal cursor-pointer hover:underline" onClick={() => navigate('/doctors')}>New Booking</span>
               </div>
               
-              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-[200px] max-h-[500px]">
+              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-[200px] max-h-[500px] cursor-pointer" onClick={() => navigate('/appointments')}>
                 <AppointmentList appointments={appointments} loading={loadingAppointments} />
               </div>
+              
+              <Button variant="outline" className="mt-4 w-full text-xs" onClick={() => navigate('/appointments')}>View All</Button>
             </GlassCard>
           </div>
 
