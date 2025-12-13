@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { GlassCard, Button, Input } from '../../components/UI';
 import { Activity, Mail, User, Stethoscope, ArrowRight, AlertCircle } from 'lucide-react';
 import { Role } from '../../types/auth';
+import { config } from '../../config';
 
 export const Signup: React.FC = () => {
   const [name, setName] = useState('');
@@ -20,7 +21,7 @@ export const Signup: React.FC = () => {
     /* global google */
     if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
         google.accounts.id.initialize({
-            client_id: "YOUR_GOOGLE_CLIENT_ID_HERE", // Replace with env var
+            client_id: config.googleClientId,
             callback: handleGoogleCallback
         });
         google.accounts.id.renderButton(

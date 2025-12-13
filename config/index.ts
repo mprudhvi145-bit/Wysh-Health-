@@ -6,4 +6,5 @@ export const config = {
   environment: env.MODE || 'development',
   enableMock: true, // Toggle to switch between real API and mock services
   timeout: 10000,
+  googleClientId: env.VITE_GOOGLE_CLIENT_ID || 'your_google_client_id_here',
 };

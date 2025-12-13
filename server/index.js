@@ -13,6 +13,10 @@ const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'wysh-secure-dev-secret-key-change-in-prod';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
+if (!GOOGLE_CLIENT_ID) {
+  console.warn("⚠️  WARNING: GOOGLE_CLIENT_ID is not set in server/.env. Google Auth will fail.");
+}
+
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // --- In-Memory Mock Database ---
@@ -32,9 +36,10 @@ const users = [
 // --- Middleware ---
 
 app.use(cors({
-  origin: process.env.CLIENT_URL || '*', 
+  origin: process.env.CLIENT_URL || 'http://localhost:3000', 
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
 app.use(express.json({ limit: '100kb' }));
@@ -75,6 +80,7 @@ const generateToken = (user) => {
 // 1. Google Sign-In
 app.post('/api/auth/google', async (req, res) => {
   try {
+    console.log("Google token received");
     const { token, role = 'patient' } = req.body;
     
     // Verify Google Token
@@ -166,7 +172,7 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
 
 if (!apiKey) {
-  console.error("FATAL: GEMINI_API_KEY is not set. Please check your .env file.");
+  console.error("⚠️  FATAL: GEMINI_API_KEY is not set. Please check server/.env file.");
 }
 
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;

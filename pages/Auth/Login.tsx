@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { GlassCard, Button, Input } from '../../components/UI';
 import { Activity, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
+import { config } from '../../config';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -19,7 +20,7 @@ export const Login: React.FC = () => {
     /* global google */
     if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
       google.accounts.id.initialize({
-        client_id: "YOUR_GOOGLE_CLIENT_ID_HERE", // Replace with env var in real app
+        client_id: config.googleClientId,
         callback: handleGoogleCallback
       });
       google.accounts.id.renderButton(
