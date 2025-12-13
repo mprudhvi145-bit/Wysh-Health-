@@ -1,0 +1,70 @@
+import React, { createContext, useContext, useState, useCallback } from "react";
+import { clinicalService } from "../services/clinicalService";
+
+type Chart = {
+  patient?: any;
+  appointments?: any[];
+  prescriptions?: any[];
+  labOrders?: any[]; // Matching backend response key
+  clinicalNotes?: any[]; // Matching backend response key
+  documents?: any[];
+};
+
+type ClinicalState = {
+  patientId?: string;
+  chart: Chart;
+  loading: boolean;
+  error?: string;
+};
+
+type ClinicalCtx = ClinicalState & {
+  loadPatient: (patientId: string) => Promise<void>;
+  refresh: () => Promise<void>;
+  clear: () => void;
+};
+
+const Ctx = createContext<ClinicalCtx | null>(null);
+
+export const ClinicalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [state, setState] = useState<ClinicalState>({ chart: {}, loading: false });
+
+  const loadPatient = useCallback(async (patientId: string) => {
+    setState(s => ({ ...s, loading: true, error: undefined, patientId }));
+    try {
+      const data = await clinicalService.getPatientChart(patientId);
+      setState({ patientId, chart: data, loading: false });
+    } catch (e: any) {
+      console.error(e);
+      setState(s => ({ ...s, loading: false, error: e?.message || "Failed to load chart" }));
+    }
+  }, []);
+
+  const refresh = useCallback(async () => {
+    if (!state.patientId) return;
+    // Silent refresh logic could go here (keeping loading false if desired), 
+    // but for now we reuse loadPatient which triggers loading state.
+    // To avoid flickering, we could separate fetch logic, but for simplicity:
+    try {
+        const data = await clinicalService.getPatientChart(state.patientId);
+        setState(s => ({ ...s, chart: data }));
+    } catch (e) {
+        console.error("Refresh failed", e);
+    }
+  }, [state.patientId]);
+
+  const clear = useCallback(() => {
+      setState({ chart: {}, loading: false, patientId: undefined });
+  }, []);
+
+  return (
+    <Ctx.Provider value={{ ...state, loadPatient, refresh, clear }}>
+      {children}
+    </Ctx.Provider>
+  );
+};
+
+export const useClinicalContext = () => {
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error("useClinicalContext must be used within ClinicalProvider");
+  return ctx;
+};

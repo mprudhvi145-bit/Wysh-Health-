@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard, Button, Input, Modal, Badge, Loader, Checkbox } from '../../../components/UI';
-import { patientService, Prescription } from '../../../services/patientService';
-import { doctorService, ClinicalPatient, LabOrder, ClinicalNote } from '../../../services/doctorService';
+import { clinicalService } from '../services/clinicalService';
+import { ClinicalProvider, useClinicalContext } from '../context/ClinicalContext';
+import { useClinical } from '../hooks/useClinical';
 import { Search, UserPlus, FileText, Activity, Plus, Save, TestTube, Clock, CheckCircle, ChevronRight, AlertCircle, StickyNote, Lock, Unlock } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotification } from '../../../context/NotificationContext';
+import { ClinicalPatient } from '../../../services/doctorService'; // Keeping type for list compatibility
 
-export const PatientManager: React.FC = () => {
+// Internal Component accessing Context
+const PatientManagerContent: React.FC = () => {
   const { user } = useAuth();
   const { addNotification } = useNotification();
+  const { loadPatient, patient, prescriptions, labOrders, clinicalNotes, loading, refresh, clear } = useClinical();
   
   // Lists & Selection
   const [patients, setPatients] = useState<ClinicalPatient[]>([]);
   const [search, setSearch] = useState('');
-  const [selectedPatient, setSelectedPatient] = useState<ClinicalPatient | null>(null);
-  const [loadingDetails, setLoadingDetails] = useState(false);
-
+  
   // Workflow Tabs
   const [activeTab, setActiveTab] = useState<'overview' | 'rx' | 'labs' | 'notes'>('overview');
   
@@ -29,11 +31,11 @@ export const PatientManager: React.FC = () => {
   const [labForm, setLabForm] = useState({ testName: '', category: 'Blood', priority: 'Routine' });
   const [noteForm, setNoteForm] = useState({ type: 'General', subject: '', content: '', isPrivate: false });
 
-  // Initial Fetch & Search
+  // Initial Fetch & Search for Sidebar
   useEffect(() => {
     const fetchPatients = async () => {
       try {
-        const data = await doctorService.searchPatients(search);
+        const data = await clinicalService.searchPatients(search);
         setPatients(data);
       } catch (err) {
         console.error(err);
@@ -44,39 +46,37 @@ export const PatientManager: React.FC = () => {
   }, [search]);
 
   // Fetch Full Details on Select
-  const handleSelectPatient = async (patient: ClinicalPatient) => {
-    setLoadingDetails(true);
-    try {
-      const details = await doctorService.getPatientDetails(patient.id);
-      setSelectedPatient(details);
-      setActiveTab('overview');
-    } catch (err) {
-      addNotification('error', 'Failed to load patient history');
-    } finally {
-      setLoadingDetails(false);
-    }
+  const handleSelectPatient = (p: ClinicalPatient) => {
+    loadPatient(p.id);
+    setActiveTab('overview');
   };
 
-  // --- Handlers ---
+  const handleCloseVisit = () => {
+      addNotification('success', 'Visit summary logged. Chart closed.');
+      clear();
+  };
+
+  // --- Actions ---
 
   const handleAddMed = () => {
     setMeds([...meds, { name: '', dosage: '', frequency: '' }]);
   };
 
   const handlePrescribe = async () => {
-    if (!selectedPatient || !user) return;
+    if (!patient || !user) return;
     try {
-      const res = await doctorService.createPrescription({
-        patientId: selectedPatient.id,
-        medications: meds.map(m => ({ ...m, duration: '30 days' })),
+      await clinicalService.createPrescription({
+        patientId: patient.id,
+        items: meds.map(m => ({ 
+            medicine: m.name, 
+            dosage: m.dosage, 
+            frequency: m.frequency, 
+            duration: '30 days' 
+        })),
         notes: 'Prescribed via Wysh Clinical Console'
       });
       
-      setSelectedPatient(prev => prev ? ({
-        ...prev,
-        prescriptions: [res.data, ...(prev.prescriptions || [])]
-      }) : null);
-      
+      await refresh();
       setPrescribing(false);
       setMeds([{ name: '', dosage: '', frequency: '' }]);
       addNotification('success', 'Prescription sent to pharmacy');
@@ -86,18 +86,16 @@ export const PatientManager: React.FC = () => {
   };
 
   const handleOrderLab = async () => {
-    if (!selectedPatient || !user) return;
+    if (!patient || !user) return;
     try {
-      const res = await doctorService.orderLab({
-        patientId: selectedPatient.id,
-        ...labForm
+      await clinicalService.createLabOrder({
+        patientId: patient.id,
+        tests: [labForm.testName],
+        category: labForm.category,
+        priority: labForm.priority
       });
 
-      setSelectedPatient(prev => prev ? ({
-        ...prev,
-        labOrders: [res.data, ...(prev.labOrders || [])]
-      }) : null);
-
+      await refresh();
       setOrderingLab(false);
       addNotification('success', 'Lab order placed successfully');
     } catch (err) {
@@ -106,29 +104,20 @@ export const PatientManager: React.FC = () => {
   };
 
   const handleSaveNote = async () => {
-    if (!selectedPatient || !user) return;
+    if (!patient || !user) return;
     try {
-      const res = await doctorService.createNote({
-        patientId: selectedPatient.id,
+      await clinicalService.addNote({
+        patientId: patient.id,
         ...noteForm
       });
 
-      setSelectedPatient(prev => prev ? ({
-        ...prev,
-        clinicalNotes: [res.data, ...(prev.clinicalNotes || [])]
-      }) : null);
-
+      await refresh();
       setWritingNote(false);
       setNoteForm({ type: 'General', subject: '', content: '', isPrivate: false });
       addNotification('success', 'Clinical note saved');
     } catch (err) {
       addNotification('error', 'Failed to save note');
     }
-  };
-
-  const handleCloseVisit = () => {
-      addNotification('success', 'Visit summary logged. Chart closed.');
-      setSelectedPatient(null);
   };
 
   return (
@@ -162,7 +151,7 @@ export const PatientManager: React.FC = () => {
                 key={p.id} 
                 className={`
                   p-3 rounded-xl cursor-pointer transition-all border relative
-                  ${selectedPatient?.id === p.id 
+                  ${patient?.id === p.id 
                     ? 'bg-teal/10 border-teal text-white' 
                     : 'bg-white/5 border-transparent text-text-secondary hover:bg-white/10 hover:text-white'}
                 `}
@@ -180,8 +169,8 @@ export const PatientManager: React.FC = () => {
 
         {/* Clinical Workspace (Right Area) */}
         <div className="lg:col-span-3">
-          {selectedPatient ? (
-            loadingDetails ? (
+          {patient ? (
+            loading ? (
               <div className="h-full flex items-center justify-center"><Loader text="Loading clinical history..." /></div>
             ) : (
               <GlassCard className="h-full flex flex-col !p-0 overflow-hidden bg-[#0D0F12]">
@@ -189,14 +178,14 @@ export const PatientManager: React.FC = () => {
                 <div className="p-6 border-b border-white/10 bg-white/5 flex flex-col md:flex-row justify-between items-start gap-4">
                    <div className="flex items-center gap-4">
                      <div className="w-16 h-16 rounded-full bg-teal/20 border border-teal text-teal flex items-center justify-center text-xl font-bold">
-                       {selectedPatient.name.charAt(0)}
+                       {patient.name.charAt(0)}
                      </div>
                      <div>
-                       <h2 className="text-2xl font-bold text-white">{selectedPatient.name}</h2>
+                       <h2 className="text-2xl font-bold text-white">{patient.name}</h2>
                        <div className="flex flex-wrap gap-4 text-sm text-text-secondary mt-1">
-                          <span className="flex items-center gap-1"><Activity size={14}/> ID: {selectedPatient.id}</span>
-                          <span>Age: {selectedPatient.age}</span>
-                          <span>Last Visit: {selectedPatient.lastVisit}</span>
+                          <span className="flex items-center gap-1"><Activity size={14}/> ID: {patient.id}</span>
+                          <span>Age: {patient.age || 'N/A'}</span>
+                          <span>Last Visit: {patient.lastVisit}</span>
                        </div>
                      </div>
                    </div>
@@ -245,13 +234,13 @@ export const PatientManager: React.FC = () => {
                          <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl">
                             <h4 className="text-red-300 font-bold text-sm mb-3 flex items-center gap-2"><AlertCircle size={16}/> Allergies</h4>
                             <div className="flex flex-wrap gap-2">
-                                {selectedPatient.allergies?.map((a: string) => <Badge key={a} color="purple">{a}</Badge>) || <span className="text-xs text-white/50">None Recorded</span>}
+                                {patient.allergies?.map((a: string) => <Badge key={a} color="purple">{a}</Badge>) || <span className="text-xs text-white/50">None Recorded</span>}
                             </div>
                          </div>
                          <div className="bg-teal/10 border border-teal/20 p-4 rounded-xl">
                             <h4 className="text-teal font-bold text-sm mb-3 flex items-center gap-2"><Activity size={16}/> Chronic Conditions</h4>
                              <div className="flex flex-wrap gap-2">
-                                {selectedPatient.chronicConditions?.map((c: string) => <Badge key={c} color="teal">{c}</Badge>)}
+                                {patient.chronicConditions?.map((c: string) => <Badge key={c} color="teal">{c}</Badge>)}
                             </div>
                          </div>
                        </div>
@@ -279,25 +268,25 @@ export const PatientManager: React.FC = () => {
 
                    {activeTab === 'rx' && (
                      <div className="space-y-4">
-                        {(!selectedPatient.prescriptions || selectedPatient.prescriptions.length === 0) && (
+                        {(!prescriptions || prescriptions.length === 0) && (
                             <div className="text-center py-12 text-text-secondary border border-dashed border-white/10 rounded-xl">
                                 No active prescriptions.
                             </div>
                         )}
-                        {selectedPatient.prescriptions?.map((rx: Prescription) => (
+                        {prescriptions.map((rx: any) => (
                           <div key={rx.id} className="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col gap-3 group hover:border-teal/30 transition-colors">
                              <div className="flex justify-between items-start">
                                 <div>
-                                    <span className="text-xs text-teal font-bold block mb-1">{rx.date}</span>
-                                    <span className="text-xs text-text-secondary">Ordered by {rx.doctorName}</span>
+                                    <span className="text-xs text-teal font-bold block mb-1">{rx.createdAt ? new Date(rx.createdAt).toLocaleDateString() : rx.date}</span>
+                                    <span className="text-xs text-text-secondary">Ordered by {rx.doctorId || 'Dr. Ref'}</span>
                                 </div>
                                 <Badge color="teal">Active</Badge>
                              </div>
                              
                              <div className="space-y-2 mt-2">
-                                {rx.medications.map((m, i) => (
+                                {rx.items?.map((m: any, i: number) => (
                                   <div key={i} className="flex justify-between items-center text-sm bg-black/20 p-2 rounded">
-                                      <span className="text-white font-medium">{m.name}</span>
+                                      <span className="text-white font-medium">{m.medicine}</span>
                                       <span className="text-text-secondary">{m.dosage} • {m.frequency}</span>
                                   </div>
                                 ))}
@@ -311,25 +300,25 @@ export const PatientManager: React.FC = () => {
 
                    {activeTab === 'labs' && (
                      <div className="space-y-4">
-                        {(!selectedPatient.labOrders || selectedPatient.labOrders.length === 0) && (
+                        {(!labOrders || labOrders.length === 0) && (
                             <div className="text-center py-12 text-text-secondary border border-dashed border-white/10 rounded-xl">
                                 No labs ordered.
                             </div>
                         )}
-                        {selectedPatient.labOrders?.map((lab: LabOrder) => (
+                        {labOrders.map((lab: any) => (
                           <div key={lab.id} className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between group hover:border-purple/30 transition-colors">
                              <div className="flex items-center gap-4">
                                 <div className="p-3 bg-purple/10 rounded-lg text-purple">
                                   <TestTube size={20} />
                                 </div>
                                 <div>
-                                  <h4 className="text-white font-bold text-sm">{lab.testName}</h4>
-                                  <p className="text-xs text-text-secondary mt-0.5">{lab.category} • {lab.priority}</p>
+                                  <h4 className="text-white font-bold text-sm">{lab.tests?.join(', ') || lab.testName}</h4>
+                                  <p className="text-xs text-text-secondary mt-0.5">{lab.priority}</p>
                                 </div>
                              </div>
                              <div className="text-right">
                                 <Badge color={lab.status === 'COMPLETED' ? 'teal' : 'purple'}>{lab.status}</Badge>
-                                <p className="text-[10px] text-text-secondary mt-2">{lab.dateOrdered}</p>
+                                <p className="text-[10px] text-text-secondary mt-2">{lab.createdAt ? new Date(lab.createdAt).toLocaleDateString() : lab.dateOrdered}</p>
                              </div>
                           </div>
                         ))}
@@ -338,17 +327,17 @@ export const PatientManager: React.FC = () => {
 
                    {activeTab === 'notes' && (
                      <div className="space-y-4">
-                        {(!selectedPatient.clinicalNotes || selectedPatient.clinicalNotes.length === 0) && (
+                        {(!clinicalNotes || clinicalNotes.length === 0) && (
                             <div className="text-center py-12 text-text-secondary border border-dashed border-white/10 rounded-xl">
                                 No clinical notes found.
                             </div>
                         )}
-                        {selectedPatient.clinicalNotes?.map((note: ClinicalNote) => (
+                        {clinicalNotes.map((note: any) => (
                            <div key={note.id} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all">
                               <div className="flex justify-between items-start mb-2">
                                  <div>
                                     <h4 className="text-white font-bold text-sm">{note.subject || 'Clinical Note'}</h4>
-                                    <p className="text-xs text-text-secondary">{new Date(note.createdAt).toLocaleString()} • {note.type}</p>
+                                    <p className="text-xs text-text-secondary">{new Date(note.createdAt).toLocaleString()} • {note.type || 'General'}</p>
                                  </div>
                                  {note.isPrivate && <Lock size={14} className="text-red-400" />}
                               </div>
@@ -367,153 +356,162 @@ export const PatientManager: React.FC = () => {
              </div>
           )}
         </div>
-      </div>
 
-      {/* Prescription Modal */}
-      <Modal isOpen={prescribing} onClose={() => setPrescribing(false)} title="Write Prescription">
-        <div className="space-y-4">
-          <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-             {meds.map((med, idx) => (
-               <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-2 p-3 bg-white/5 rounded-lg border border-white/5">
-                 <div className="md:col-span-1">
-                   <input 
-                      placeholder="Medication Name" 
-                      className="w-full bg-transparent border-b border-white/10 text-white text-sm focus:border-teal outline-none py-1"
-                      value={med.name}
-                      onChange={(e) => {
+        {/* Prescription Modal */}
+        <Modal isOpen={prescribing} onClose={() => setPrescribing(false)} title="Write Prescription">
+            <div className="space-y-4">
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                {meds.map((med, idx) => (
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-2 p-3 bg-white/5 rounded-lg border border-white/5">
+                    <div className="md:col-span-1">
+                    <input 
+                        placeholder="Medication Name" 
+                        className="w-full bg-transparent border-b border-white/10 text-white text-sm focus:border-teal outline-none py-1"
+                        value={med.name}
+                        onChange={(e) => {
+                            const newMeds = [...meds];
+                            newMeds[idx].name = e.target.value;
+                            setMeds(newMeds);
+                        }}
+                    />
+                    </div>
+                    <input 
+                        placeholder="Dosage (e.g. 50mg)" 
+                        className="w-full bg-transparent border-b border-white/10 text-white text-sm focus:border-teal outline-none py-1"
+                        value={med.dosage}
+                        onChange={(e) => {
                         const newMeds = [...meds];
-                        newMeds[idx].name = e.target.value;
+                        newMeds[idx].dosage = e.target.value;
                         setMeds(newMeds);
-                      }}
-                   />
-                 </div>
-                 <input 
-                    placeholder="Dosage (e.g. 50mg)" 
-                    className="w-full bg-transparent border-b border-white/10 text-white text-sm focus:border-teal outline-none py-1"
-                    value={med.dosage}
-                    onChange={(e) => {
-                      const newMeds = [...meds];
-                      newMeds[idx].dosage = e.target.value;
-                      setMeds(newMeds);
-                    }}
-                 />
-                 <input 
-                    placeholder="Freq (e.g. 2x Daily)" 
-                    className="w-full bg-transparent border-b border-white/10 text-white text-sm focus:border-teal outline-none py-1"
-                    value={med.frequency}
-                    onChange={(e) => {
-                      const newMeds = [...meds];
-                      newMeds[idx].frequency = e.target.value;
-                      setMeds(newMeds);
-                    }}
-                 />
-               </div>
-             ))}
-          </div>
-          <Button variant="outline" className="w-full text-xs dashed" onClick={handleAddMed} icon={<Plus size={14}/>}>
-            Add Medication
-          </Button>
-          <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
-             <Button variant="outline" onClick={() => setPrescribing(false)}>Cancel</Button>
-             <Button variant="primary" onClick={handlePrescribe} icon={<Save size={16}/>}>Sign & Send</Button>
-          </div>
-        </div>
-      </Modal>
+                        }}
+                    />
+                    <input 
+                        placeholder="Freq (e.g. 2x Daily)" 
+                        className="w-full bg-transparent border-b border-white/10 text-white text-sm focus:border-teal outline-none py-1"
+                        value={med.frequency}
+                        onChange={(e) => {
+                        const newMeds = [...meds];
+                        newMeds[idx].frequency = e.target.value;
+                        setMeds(newMeds);
+                        }}
+                    />
+                </div>
+                ))}
+            </div>
+            <Button variant="outline" className="w-full text-xs dashed" onClick={handleAddMed} icon={<Plus size={14}/>}>
+                Add Medication
+            </Button>
+            <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                <Button variant="outline" onClick={() => setPrescribing(false)}>Cancel</Button>
+                <Button variant="primary" onClick={handlePrescribe} icon={<Save size={16}/>}>Sign & Send</Button>
+            </div>
+            </div>
+        </Modal>
 
-      {/* Lab Order Modal */}
-      <Modal isOpen={orderingLab} onClose={() => setOrderingLab(false)} title="Order Lab Test">
-        <div className="space-y-4">
-           <div>
-              <label className="text-xs text-text-secondary uppercase mb-1 block">Test Name</label>
-              <Input 
-                value={labForm.testName}
-                onChange={e => setLabForm({...labForm, testName: e.target.value})}
-                placeholder="e.g. Complete Blood Count"
-              />
-           </div>
-           <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs text-text-secondary uppercase mb-1 block">Category</label>
-                <select 
-                  className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white"
-                  value={labForm.category}
-                  onChange={e => setLabForm({...labForm, category: e.target.value})}
-                >
-                  <option>Blood</option>
-                  <option>Urine</option>
-                  <option>Imaging</option>
-                  <option>Biopsy</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-text-secondary uppercase mb-1 block">Priority</label>
-                <select 
-                  className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white"
-                  value={labForm.priority}
-                  onChange={e => setLabForm({...labForm, priority: e.target.value})}
-                >
-                  <option>Routine</option>
-                  <option>Urgent</option>
-                  <option>Stat</option>
-                </select>
-              </div>
-           </div>
-           <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
-             <Button variant="outline" onClick={() => setOrderingLab(false)}>Cancel</Button>
-             <Button variant="primary" onClick={handleOrderLab} icon={<TestTube size={16}/>}>Place Order</Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Clinical Note Modal */}
-      <Modal isOpen={writingNote} onClose={() => setWritingNote(false)} title="Add Clinical Note">
-        <div className="space-y-4">
-           <div className="grid grid-cols-2 gap-4">
-             <div>
-                <label className="text-xs text-text-secondary uppercase mb-1 block">Note Type</label>
-                <select 
-                  className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white"
-                  value={noteForm.type}
-                  onChange={e => setNoteForm({...noteForm, type: e.target.value})}
-                >
-                  <option>General</option>
-                  <option>Visit Summary</option>
-                  <option>SOAP Note</option>
-                  <option>Phone Consult</option>
-                </select>
-             </div>
-             <div>
-                <label className="text-xs text-text-secondary uppercase mb-1 block">Subject</label>
+        {/* Lab Order Modal */}
+        <Modal isOpen={orderingLab} onClose={() => setOrderingLab(false)} title="Order Lab Test">
+            <div className="space-y-4">
+            <div>
+                <label className="text-xs text-text-secondary uppercase mb-1 block">Test Name</label>
                 <Input 
-                   placeholder="e.g. Follow up on hypertension"
-                   value={noteForm.subject}
-                   onChange={e => setNoteForm({...noteForm, subject: e.target.value})}
+                    value={labForm.testName}
+                    onChange={e => setLabForm({...labForm, testName: e.target.value})}
+                    placeholder="e.g. Complete Blood Count"
                 />
-             </div>
-           </div>
-           <div>
-              <label className="text-xs text-text-secondary uppercase mb-1 block">Note Content</label>
-              <textarea 
-                className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-teal min-h-[150px]"
-                placeholder="Enter clinical observations..."
-                value={noteForm.content}
-                onChange={e => setNoteForm({...noteForm, content: e.target.value})}
-              />
-           </div>
-           <div className="flex items-center gap-2">
-              <Checkbox 
-                id="private-note"
-                checked={noteForm.isPrivate}
-                onChange={(checked) => setNoteForm({...noteForm, isPrivate: checked})}
-                label="Mark as Private (Visible only to you)"
-              />
-           </div>
-           <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
-             <Button variant="outline" onClick={() => setWritingNote(false)}>Cancel</Button>
-             <Button variant="primary" onClick={handleSaveNote} icon={<Save size={16}/>}>Save Note</Button>
-          </div>
-        </div>
-      </Modal>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label className="text-xs text-text-secondary uppercase mb-1 block">Category</label>
+                    <select 
+                    className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white"
+                    value={labForm.category}
+                    onChange={e => setLabForm({...labForm, category: e.target.value})}
+                    >
+                    <option>Blood</option>
+                    <option>Urine</option>
+                    <option>Imaging</option>
+                    <option>Biopsy</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="text-xs text-text-secondary uppercase mb-1 block">Priority</label>
+                    <select 
+                    className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white"
+                    value={labForm.priority}
+                    onChange={e => setLabForm({...labForm, priority: e.target.value})}
+                    >
+                    <option>Routine</option>
+                    <option>Urgent</option>
+                    <option>Stat</option>
+                    </select>
+                </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                <Button variant="outline" onClick={() => setOrderingLab(false)}>Cancel</Button>
+                <Button variant="primary" onClick={handleOrderLab} icon={<TestTube size={16}/>}>Place Order</Button>
+            </div>
+            </div>
+        </Modal>
+
+        {/* Clinical Note Modal */}
+        <Modal isOpen={writingNote} onClose={() => setWritingNote(false)} title="Add Clinical Note">
+            <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label className="text-xs text-text-secondary uppercase mb-1 block">Note Type</label>
+                    <select 
+                    className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white"
+                    value={noteForm.type}
+                    onChange={e => setNoteForm({...noteForm, type: e.target.value})}
+                    >
+                    <option>General</option>
+                    <option>Visit Summary</option>
+                    <option>SOAP Note</option>
+                    <option>Phone Consult</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="text-xs text-text-secondary uppercase mb-1 block">Subject</label>
+                    <Input 
+                    placeholder="e.g. Follow up on hypertension"
+                    value={noteForm.subject}
+                    onChange={e => setNoteForm({...noteForm, subject: e.target.value})}
+                    />
+                </div>
+            </div>
+            <div>
+                <label className="text-xs text-text-secondary uppercase mb-1 block">Note Content</label>
+                <textarea 
+                    className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-teal min-h-[150px]"
+                    placeholder="Enter clinical observations..."
+                    value={noteForm.content}
+                    onChange={e => setNoteForm({...noteForm, content: e.target.value})}
+                />
+            </div>
+            <div className="flex items-center gap-2">
+                <Checkbox 
+                    id="private-note"
+                    checked={noteForm.isPrivate}
+                    onChange={(checked) => setNoteForm({...noteForm, isPrivate: checked})}
+                    label="Mark as Private (Visible only to you)"
+                />
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                <Button variant="outline" onClick={() => setWritingNote(false)}>Cancel</Button>
+                <Button variant="primary" onClick={handleSaveNote} icon={<Save size={16}/>}>Save Note</Button>
+            </div>
+            </div>
+        </Modal>
+
+      </div>
     </div>
+  );
+};
+
+export const PatientManager: React.FC = () => {
+  return (
+    <ClinicalProvider>
+      <PatientManagerContent />
+    </ClinicalProvider>
   );
 };
