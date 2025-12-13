@@ -105,7 +105,6 @@ export const PrismaRepo = {
         patientId: input.patientId,
         doctorId,
         content: input.content,
-        // SOAP Fields
         subjective: input.subjective,
         objective: input.objective,
         assessment: input.assessment,
@@ -115,13 +114,25 @@ export const PrismaRepo = {
     });
   },
 
+  // STATE MACHINE: ENFORCE TRANSITIONS
   async startAppointment(appointmentId) {
     return prisma.$transaction(async (tx) => {
         const appt = await tx.encounter.findUnique({ where: { id: appointmentId } });
-        if (!appt) throw new Error("Appointment not found");
-        if (appt.status !== 'SCHEDULED') {
-            throw new Error("Invalid State: Can only start SCHEDULED appointments.");
+        if (!appt) {
+            const err = new Error("Appointment not found");
+            err.code = "NOT_FOUND";
+            err.status = 404;
+            throw err;
         }
+        
+        // Strict State Check
+        if (appt.status !== 'SCHEDULED') {
+            const err = new Error(`Illegal State Transition: Cannot start appointment in '${appt.status}' state.`);
+            err.code = "ILLEGAL_STATE";
+            err.status = 409;
+            throw err;
+        }
+
         return tx.encounter.update({
             where: { id: appointmentId },
             data: { status: "IN_PROGRESS", startedAt: new Date() },
@@ -132,9 +143,19 @@ export const PrismaRepo = {
   async closeAppointment(appointmentId, summary) {
     return prisma.$transaction(async (tx) => {
       const current = await tx.encounter.findUnique({ where: { id: appointmentId }});
-      if (!current) throw new Error("Appointment not found");
+      if (!current) {
+          const err = new Error("Appointment not found");
+          err.code = "NOT_FOUND";
+          err.status = 404;
+          throw err;
+      }
+
+      // Strict State Check
       if (current.status !== 'IN_PROGRESS') {
-          throw new Error("Invalid State: Can only close IN_PROGRESS appointments.");
+          const err = new Error(`Illegal State Transition: Cannot close appointment in '${current.status}' state. It must be IN_PROGRESS.`);
+          err.code = "ILLEGAL_STATE";
+          err.status = 409;
+          throw err;
       }
 
       const appt = await tx.encounter.update({
