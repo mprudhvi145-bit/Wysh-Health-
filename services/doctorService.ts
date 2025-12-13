@@ -3,7 +3,6 @@ import { Prescription } from '../services/patientService';
 import { config } from '../config';
 import { authService } from './authService';
 
-// Determine backend URL
 const getBackendUrl = () => {
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return 'http://localhost:3001/api';
@@ -21,6 +20,18 @@ export interface LabOrder {
   dateOrdered: string;
 }
 
+export interface ClinicalNote {
+  id: string;
+  patientId: string;
+  doctorId: string;
+  doctorName: string;
+  type: string;
+  subject: string;
+  content: string;
+  isPrivate: boolean;
+  createdAt: string;
+}
+
 export interface ClinicalPatient {
   id: string;
   name: string;
@@ -31,13 +42,14 @@ export interface ClinicalPatient {
   lastVisit: string;
   prescriptions?: Prescription[];
   labOrders?: LabOrder[];
+  clinicalNotes?: ClinicalNote[];
 }
 
 export const doctorService = {
   
   // --- Doctor Directory (Public) ---
   getAllDoctors: async (specialty?: Specialty, search?: string): Promise<Doctor[]> => {
-    // Mock public data for directory
+    // Mock public data
     await new Promise(r => setTimeout(r, 600));
     return []; 
   },
@@ -98,6 +110,20 @@ export const doctorService = {
       body: JSON.stringify(payload)
     });
     if (!res.ok) throw new Error('Failed to order lab');
+    return await res.json();
+  },
+
+  createNote: async (payload: { patientId: string, type: string, subject: string, content: string, isPrivate: boolean }) => {
+    const token = authService.getToken();
+    const res = await fetch(`${getBackendUrl()}/clinical/notes`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to create note');
     return await res.json();
   }
 };

@@ -27,7 +27,6 @@ const upload = multer({
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // --- In-Memory Mock Database (Mirrors Prisma Schema) ---
-// In production, replace these arrays with Prisma queries.
 
 const users = [
   {
@@ -112,7 +111,35 @@ const clinicalRecords = {
       status: 'Completed',
       dateOrdered: '2024-10-12'
     }
-  ]
+  ],
+  clinicalNotes: [
+    {
+      id: 'note_1',
+      patientId: 'p1',
+      doctorId: 'usr_doc_1',
+      doctorName: 'Dr. Sarah Chen',
+      type: 'Visit Summary',
+      subject: 'Follow-up on Arrhythmia',
+      content: 'Patient reports mild palpitations. BP 120/80. No new symptoms. Advised to continue medication.',
+      createdAt: '2024-10-12T10:30:00Z',
+      isPrivate: false
+    }
+  ],
+  auditLogs: []
+};
+
+// --- Helper: Audit Logging ---
+const logAudit = (userId, action, resource, details = {}) => {
+  const log = {
+    id: `log_${Date.now()}`,
+    userId,
+    action,
+    resource,
+    details,
+    timestamp: new Date().toISOString()
+  };
+  clinicalRecords.auditLogs.unshift(log);
+  console.log(`[AUDIT] ${action} by ${userId} on ${resource}`);
 };
 
 // --- Middleware ---
@@ -148,7 +175,6 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// --- Auth Helper ---
 const generateToken = (user) => {
   return jwt.sign(
     { id: user.id, email: user.email, role: user.role, name: user.name },
@@ -194,6 +220,8 @@ app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
   const user = users.find(u => u.email === email && (u.password === password || u.password === undefined));
   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+  
+  logAudit(user.id, 'LOGIN', 'Auth');
   const token = generateToken(user);
   res.json({ user, token });
 });
@@ -210,6 +238,7 @@ app.post('/api/auth/register', (req, res) => {
     avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff`
   };
   users.push(newUser);
+  logAudit(newUser.id, 'REGISTER', 'Auth');
   const token = generateToken(newUser);
   res.status(201).json({ user: newUser, token });
 });
@@ -232,25 +261,33 @@ app.get('/api/clinical/patients', authenticateToken, (req, res) => {
     const q = query.toLowerCase();
     results = patients.filter(p => p.name.toLowerCase().includes(q));
   }
+  
+  // Minimal logging for search to avoid spam, but useful for compliance
+  // logAudit(req.user.id, 'SEARCH_PATIENT', 'PatientIndex'); 
+  
   res.json({ data: results });
 });
 
-// 2. Get Patient Details (Consolidated History)
+// 2. Get Patient Details (Chart View)
 app.get('/api/clinical/patients/:id', authenticateToken, (req, res) => {
   if (req.user.role !== 'doctor') return res.sendStatus(403);
 
   const patient = patients.find(p => p.id === req.params.id);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
   
-  // Join related records (In a real DB, this would be a Prisma include)
+  logAudit(req.user.id, 'VIEW_CHART', `Patient:${patient.id}`);
+
+  // Aggregate Clinical Data
   const patientRx = clinicalRecords.prescriptions.filter(rx => rx.patientId === patient.id);
   const patientLabs = clinicalRecords.labOrders.filter(lab => lab.patientId === patient.id);
+  const patientNotes = clinicalRecords.clinicalNotes.filter(n => n.patientId === patient.id);
   
   res.json({ 
     data: { 
       ...patient, 
       prescriptions: patientRx, 
-      labOrders: patientLabs 
+      labOrders: patientLabs,
+      clinicalNotes: patientNotes
     } 
   });
 });
@@ -273,6 +310,8 @@ app.post('/api/clinical/prescriptions', authenticateToken, (req, res) => {
   };
   
   clinicalRecords.prescriptions.unshift(newRx);
+  logAudit(req.user.id, 'CREATE_RX', `Patient:${patientId}`, { rxId: newRx.id });
+  
   res.status(201).json({ data: newRx });
 });
 
@@ -294,7 +333,33 @@ app.post('/api/clinical/labs', authenticateToken, (req, res) => {
   };
 
   clinicalRecords.labOrders.unshift(newLab);
+  logAudit(req.user.id, 'ORDER_LAB', `Patient:${patientId}`, { labId: newLab.id });
+
   res.status(201).json({ data: newLab });
+});
+
+// 5. Create Clinical Note
+app.post('/api/clinical/notes', authenticateToken, (req, res) => {
+  if (req.user.role !== 'doctor') return res.sendStatus(403);
+
+  const { patientId, type, subject, content, isPrivate } = req.body;
+
+  const newNote = {
+    id: `note_${Math.random().toString(36).substr(2, 9)}`,
+    patientId,
+    doctorId: req.user.id,
+    doctorName: req.user.name,
+    type,
+    subject,
+    content,
+    isPrivate: isPrivate || false,
+    createdAt: new Date().toISOString()
+  };
+
+  clinicalRecords.clinicalNotes.unshift(newNote);
+  logAudit(req.user.id, 'CREATE_NOTE', `Patient:${patientId}`, { noteId: newNote.id });
+
+  res.status(201).json({ data: newNote });
 });
 
 // --- AI Service ---
@@ -306,6 +371,9 @@ app.post('/api/ai/health-insight', authenticateToken, async (req, res) => {
   if (!ai) return res.status(503).json({ error: 'AI Service not configured.' });
   try {
     const { prompt, systemInstruction } = req.body;
+    
+    logAudit(req.user.id, 'AI_QUERY', 'Gemini');
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -327,6 +395,8 @@ app.post('/api/ai/document-extract', authenticateToken, upload.single('file'), a
     const file = req.file;
     const { documentType } = req.body;
     if (!file) return res.status(400).json({ error: 'No file uploaded.' });
+
+    logAudit(req.user.id, 'AI_DOC_EXTRACT', `Type:${documentType}`);
 
     const base64Data = file.buffer.toString('base64');
     const mimeType = file.mimetype;

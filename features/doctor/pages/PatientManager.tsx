@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { GlassCard, Button, Input, Modal, Badge, Loader } from '../../../components/UI';
+import { GlassCard, Button, Input, Modal, Badge, Loader, Checkbox } from '../../../components/UI';
 import { patientService, Prescription } from '../../../services/patientService';
-import { doctorService, ClinicalPatient, LabOrder } from '../../../services/doctorService';
-import { Search, UserPlus, FileText, Activity, Plus, Save, TestTube, Clock, CheckCircle, ChevronRight, AlertCircle } from 'lucide-react';
+import { doctorService, ClinicalPatient, LabOrder, ClinicalNote } from '../../../services/doctorService';
+import { Search, UserPlus, FileText, Activity, Plus, Save, TestTube, Clock, CheckCircle, ChevronRight, AlertCircle, StickyNote, Lock, Unlock } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotification } from '../../../context/NotificationContext';
 
@@ -17,15 +17,17 @@ export const PatientManager: React.FC = () => {
   const [loadingDetails, setLoadingDetails] = useState(false);
 
   // Workflow Tabs
-  const [activeTab, setActiveTab] = useState<'overview' | 'rx' | 'labs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'rx' | 'labs' | 'notes'>('overview');
   
   // Modals
   const [prescribing, setPrescribing] = useState(false);
   const [orderingLab, setOrderingLab] = useState(false);
+  const [writingNote, setWritingNote] = useState(false);
   
   // Forms
   const [meds, setMeds] = useState([{ name: '', dosage: '', frequency: '' }]);
   const [labForm, setLabForm] = useState({ testName: '', category: 'Blood', priority: 'Routine' });
+  const [noteForm, setNoteForm] = useState({ type: 'General', subject: '', content: '', isPrivate: false });
 
   // Initial Fetch & Search
   useEffect(() => {
@@ -70,7 +72,6 @@ export const PatientManager: React.FC = () => {
         notes: 'Prescribed via Wysh Clinical Console'
       });
       
-      // Optimistically update local state
       setSelectedPatient(prev => prev ? ({
         ...prev,
         prescriptions: [res.data, ...(prev.prescriptions || [])]
@@ -92,7 +93,6 @@ export const PatientManager: React.FC = () => {
         ...labForm
       });
 
-      // Optimistically update local state
       setSelectedPatient(prev => prev ? ({
         ...prev,
         labOrders: [res.data, ...(prev.labOrders || [])]
@@ -102,6 +102,27 @@ export const PatientManager: React.FC = () => {
       addNotification('success', 'Lab order placed successfully');
     } catch (err) {
       addNotification('error', 'Failed to place order');
+    }
+  };
+
+  const handleSaveNote = async () => {
+    if (!selectedPatient || !user) return;
+    try {
+      const res = await doctorService.createNote({
+        patientId: selectedPatient.id,
+        ...noteForm
+      });
+
+      setSelectedPatient(prev => prev ? ({
+        ...prev,
+        clinicalNotes: [res.data, ...(prev.clinicalNotes || [])]
+      }) : null);
+
+      setWritingNote(false);
+      setNoteForm({ type: 'General', subject: '', content: '', isPrivate: false });
+      addNotification('success', 'Clinical note saved');
+    } catch (err) {
+      addNotification('error', 'Failed to save note');
     }
   };
 
@@ -176,6 +197,9 @@ export const PatientManager: React.FC = () => {
                    </div>
                    
                    <div className="flex gap-2">
+                      <Button variant={activeTab === 'notes' ? 'primary' : 'outline'} className="h-10 text-xs" icon={<StickyNote size={16}/>} onClick={() => setWritingNote(true)}>
+                        Add Note
+                      </Button>
                       <Button variant={activeTab === 'rx' ? 'primary' : 'outline'} className="h-10 text-xs" icon={<FileText size={16}/>} onClick={() => setPrescribing(true)}>
                         Prescribe
                       </Button>
@@ -187,7 +211,7 @@ export const PatientManager: React.FC = () => {
 
                 {/* Tabs */}
                 <div className="flex border-b border-white/10 px-6 bg-black/20">
-                  {['overview', 'rx', 'labs'].map(tab => (
+                  {['overview', 'rx', 'labs', 'notes'].map(tab => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab as any)}
@@ -199,6 +223,7 @@ export const PatientManager: React.FC = () => {
                       {tab === 'overview' && 'Clinical Overview'}
                       {tab === 'rx' && 'Medications'}
                       {tab === 'labs' && 'Lab Results'}
+                      {tab === 'notes' && 'Clinical Notes'}
                     </button>
                   ))}
                 </div>
@@ -299,6 +324,28 @@ export const PatientManager: React.FC = () => {
                                 <p className="text-[10px] text-text-secondary mt-2">{lab.dateOrdered}</p>
                              </div>
                           </div>
+                        ))}
+                     </div>
+                   )}
+
+                   {activeTab === 'notes' && (
+                     <div className="space-y-4">
+                        {(!selectedPatient.clinicalNotes || selectedPatient.clinicalNotes.length === 0) && (
+                            <div className="text-center py-12 text-text-secondary border border-dashed border-white/10 rounded-xl">
+                                No clinical notes found.
+                            </div>
+                        )}
+                        {selectedPatient.clinicalNotes?.map((note: ClinicalNote) => (
+                           <div key={note.id} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all">
+                              <div className="flex justify-between items-start mb-2">
+                                 <div>
+                                    <h4 className="text-white font-bold text-sm">{note.subject}</h4>
+                                    <p className="text-xs text-text-secondary">{new Date(note.createdAt).toLocaleString()} • {note.type}</p>
+                                 </div>
+                                 {note.isPrivate && <Lock size={14} className="text-red-400" />}
+                              </div>
+                              <p className="text-sm text-text-secondary mt-2 leading-relaxed">{note.content}</p>
+                           </div>
                         ))}
                      </div>
                    )}
@@ -406,6 +453,56 @@ export const PatientManager: React.FC = () => {
            <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
              <Button variant="outline" onClick={() => setOrderingLab(false)}>Cancel</Button>
              <Button variant="primary" onClick={handleOrderLab} icon={<TestTube size={16}/>}>Place Order</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Clinical Note Modal */}
+      <Modal isOpen={writingNote} onClose={() => setWritingNote(false)} title="Add Clinical Note">
+        <div className="space-y-4">
+           <div className="grid grid-cols-2 gap-4">
+             <div>
+                <label className="text-xs text-text-secondary uppercase mb-1 block">Note Type</label>
+                <select 
+                  className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white"
+                  value={noteForm.type}
+                  onChange={e => setNoteForm({...noteForm, type: e.target.value})}
+                >
+                  <option>General</option>
+                  <option>Visit Summary</option>
+                  <option>SOAP Note</option>
+                  <option>Phone Consult</option>
+                </select>
+             </div>
+             <div>
+                <label className="text-xs text-text-secondary uppercase mb-1 block">Subject</label>
+                <Input 
+                   placeholder="e.g. Follow up on hypertension"
+                   value={noteForm.subject}
+                   onChange={e => setNoteForm({...noteForm, subject: e.target.value})}
+                />
+             </div>
+           </div>
+           <div>
+              <label className="text-xs text-text-secondary uppercase mb-1 block">Note Content</label>
+              <textarea 
+                className="w-full bg-surgical-light border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-teal min-h-[150px]"
+                placeholder="Enter clinical observations..."
+                value={noteForm.content}
+                onChange={e => setNoteForm({...noteForm, content: e.target.value})}
+              />
+           </div>
+           <div className="flex items-center gap-2">
+              <Checkbox 
+                id="private-note"
+                checked={noteForm.isPrivate}
+                onChange={(checked) => setNoteForm({...noteForm, isPrivate: checked})}
+                label="Mark as Private (Visible only to you)"
+              />
+           </div>
+           <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+             <Button variant="outline" onClick={() => setWritingNote(false)}>Cancel</Button>
+             <Button variant="primary" onClick={handleSaveNote} icon={<Save size={16}/>}>Save Note</Button>
           </div>
         </div>
       </Modal>
