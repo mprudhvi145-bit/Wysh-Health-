@@ -1,66 +1,78 @@
-import { Repo } from "./repo.memory.js";
+import { Repo } from "./repo.js";
+
+// Helper for serialization/filtering
+const serializeChart = (data, role) => {
+  if (role === 'patient') {
+    return {
+      ...data,
+      clinicalNotes: data.clinicalNotes?.filter(n => n.shared) || [],
+      // Remove sensitive fields if any
+      // documents: data.documents.filter(d => !d.internalOnly) 
+    };
+  }
+  return data; // Doctors see everything
+};
 
 export const ClinicalService = {
-  searchPatients(query) {
-    return Repo.searchPatients(query || "");
+  async searchPatients(query) {
+    return await Repo.searchPatients(query || "");
   },
 
-  getPatientChart(patientId) {
-    return Repo.getPatientChart(patientId);
+  // Updated to accept userRole context
+  async getPatientChart(patientId, userRole = 'doctor') {
+    const data = await Repo.getPatientChart(patientId);
+    return serializeChart(data, userRole);
   },
 
-  createPrescription(dto, doctorId) {
-    // Business logic: Validate Items could go here
-    return Repo.createPrescription(dto, doctorId);
+  async createPrescription(dto, doctorId) {
+    return await Repo.createPrescription(dto, doctorId);
   },
 
-  createLabOrder(dto, doctorId) {
-    // Business logic: Check if tests are valid could go here
-    return Repo.createLabOrder(dto, doctorId);
+  async createLabOrder(dto, doctorId) {
+    return await Repo.createLabOrder(dto, doctorId);
   },
 
-  addNote(dto, doctorId) {
-    return Repo.addNote(dto, doctorId);
+  async addNote(dto, doctorId) {
+    return await Repo.addNote(dto, doctorId);
   },
 
-  closeAppointment(appointmentId, dto) {
-    return Repo.closeAppointment(appointmentId, dto);
+  async startAppointment(appointmentId) {
+    return await Repo.startAppointment(appointmentId);
+  },
+
+  async closeAppointment(appointmentId, dto) {
+    return await Repo.closeAppointment(appointmentId, dto);
   },
   
-  // Additional getters for the shared dashboard views
-  getAppointments(userRole, userId) {
-      // Logic to map userId to doctorId/patientId is currently handled in the Repo or here.
-      // For simplicity in this mock, we assume the userId passed in matches the stored ID format
-      // or we check the 'userId' field on the patient/doctor records.
-      
-      // We'll trust the repo filter for now
+  async getAppointments(userRole, userId) {
       if (userRole === 'doctor') {
-          // In a real app we'd look up the doctor ID from the User ID.
-          // For this mock, we'll return all appointments or filter if we had the mapping.
-          // We will mock filtering by "doc_1" if the user is the mock doctor.
+          // Mock doctor mapping for ID stability in demo
           const doctorId = userId === 'usr_doc_1' ? 'doc_1' : userId; 
-          return Repo.getAppointments({ doctorId });
+          return await Repo.getAppointments({ doctorId });
       } else {
           const patientId = userId === 'usr_pat_1' ? 'p1' : userId;
-          return Repo.getAppointments({ patientId });
+          return await Repo.getAppointments({ patientId });
       }
   },
 
-  createAppointment(dto) {
-      return Repo.createAppointment(dto);
+  async createAppointment(dto) {
+      return await Repo.createAppointment(dto);
   },
 
-  getPrescriptionsForPatient(userId) {
+  async getPrescriptionsForPatient(userId) {
     const patientId = userId === 'usr_pat_1' ? 'p1' : userId;
-    return Repo.getPatientChart(patientId).prescriptions;
+    const chart = await Repo.getPatientChart(patientId);
+    // Explicit serialization for patient view
+    return serializeChart(chart, 'patient').prescriptions || [];
   },
 
-  getLabsForPatient(userId) {
+  async getLabsForPatient(userId) {
     const patientId = userId === 'usr_pat_1' ? 'p1' : userId;
-    return Repo.getPatientChart(patientId).labs;
+    const chart = await Repo.getPatientChart(patientId);
+    return serializeChart(chart, 'patient').labs || [];
   },
 
-  getAppointmentById(id) {
-    return Repo.getAppointmentById(id);
+  async getAppointmentById(id) {
+    return await Repo.getAppointmentById(id);
   }
 };

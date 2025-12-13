@@ -48,6 +48,10 @@ export const clinicalService = {
     return api.post("/clinical/notes", payload);
   },
 
+  startAppointment: (appointmentId: string) => {
+    return api.post(`/clinical/appointments/${appointmentId}/start`, {});
+  },
+
   closeAppointment: (appointmentId: string, payload: CloseAppointmentPayload) => {
     return api.post(`/clinical/appointments/${appointmentId}/close`, payload);
   },

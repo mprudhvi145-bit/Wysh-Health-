@@ -2,6 +2,7 @@ import { Router } from "express";
 import { ClinicalController } from "./controller.js";
 import { authRequired } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/rbac.js";
+import { doctorOwnsPatient } from "../../middleware/ownership.js";
 import { audit } from "../../middleware/audit.js";
 
 export const clinicalRouter = Router();
@@ -17,17 +18,21 @@ clinicalRouter.get(
   ClinicalController.searchPatients
 );
 
+// LOCKED DOWN: Doctor must own patient relation
 clinicalRouter.get(
   "/patients/:patientId/chart",
   requireRole("DOCTOR"),
+  doctorOwnsPatient, 
   audit("VIEW", "patient_chart"),
   ClinicalController.getPatientChart
 );
 
 // --- Clinical Actions ---
+// LOCKED DOWN: Can only prescribe to own patients
 clinicalRouter.post(
   "/prescriptions",
   requireRole("DOCTOR"),
+  doctorOwnsPatient,
   audit("CREATE", "prescription"),
   ClinicalController.createPrescription
 );
@@ -35,6 +40,7 @@ clinicalRouter.post(
 clinicalRouter.post(
   "/labs/orders",
   requireRole("DOCTOR"),
+  doctorOwnsPatient,
   audit("CREATE", "lab_order"),
   ClinicalController.createLabOrder
 );
@@ -42,6 +48,7 @@ clinicalRouter.post(
 clinicalRouter.post(
   "/notes",
   requireRole("DOCTOR"),
+  doctorOwnsPatient,
   audit("CREATE", "clinical_note"),
   ClinicalController.addNote
 );
@@ -65,6 +72,13 @@ clinicalRouter.post(
 );
 
 clinicalRouter.post(
+  "/appointments/:id/start",
+  requireRole("DOCTOR"),
+  audit("UPDATE", "appointment_start"),
+  ClinicalController.startAppointment
+);
+
+clinicalRouter.post(
   "/appointments/:id/close",
   requireRole("DOCTOR"),
   audit("UPDATE", "appointment_close"),
@@ -74,12 +88,14 @@ clinicalRouter.post(
 // --- Patient Views (The 'Mine' endpoints) ---
 clinicalRouter.get(
   "/prescriptions/mine", 
+  requireRole("PATIENT"),
   audit("VIEW", "my_prescriptions"),
   ClinicalController.getMyPrescriptions
 );
 
 clinicalRouter.get(
   "/labs/mine", 
+  requireRole("PATIENT"),
   audit("VIEW", "my_labs"),
   ClinicalController.getMyLabs
 );

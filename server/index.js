@@ -10,6 +10,7 @@ import multer from 'multer';
 // Import new modular routes
 import { clinicalRouter } from './modules/clinical/routes.js';
 import { authRequired } from './middleware/auth.js';
+import { errorHandler } from './middleware/error.js';
 import { AuditService } from './modules/audit/service.js';
 
 dotenv.config();
@@ -18,6 +19,13 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'wysh-secure-dev-secret-key-change-in-prod';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+
+// Persistence Mode Check
+if (process.env.USE_DB === "true") {
+  console.log("🟦 Clinical Repo: Prisma (PostgreSQL)");
+} else {
+  console.log("🟨 Clinical Repo: In-memory (Mock)");
+}
 
 // Multer setup
 const upload = multer({
@@ -133,6 +141,9 @@ app.post('/api/ai/document-extract', authRequired, upload.single('file'), async 
     res.status(500).json({ error: 'Extraction Failed' });
   }
 });
+
+// Use Global Error Handler (Last Middleware)
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Wysh Care OS Server running on port ${PORT}`);

@@ -1,6 +1,6 @@
 
 export type AppointmentType = 'video' | 'in-person';
-export type AppointmentStatus = 'confirmed' | 'completed' | 'cancelled';
+export type AppointmentStatus = 'confirmed' | 'completed' | 'cancelled' | 'scheduled' | 'in_progress';
 
 export interface Appointment {
   id: string;

@@ -96,6 +96,16 @@ export const Repo = {
     return note;
   },
 
+  startAppointment(appointmentId) {
+    const appt = mem.appointments.find(a => a.id === appointmentId);
+    if (!appt) throw new Error("Appointment not found");
+    if (appt.status !== 'SCHEDULED') throw new Error("Appointment cannot be started (must be SCHEDULED)");
+    
+    appt.status = 'IN_PROGRESS';
+    appt.startedAt = new Date().toISOString();
+    return appt;
+  },
+
   closeAppointment(appointmentId, summary) {
     const appt = mem.appointments.find(a => a.id === appointmentId);
     if (!appt) throw new Error("Appointment not found");
@@ -136,5 +146,13 @@ export const Repo = {
 
   getAppointmentById(id) {
     return mem.appointments.find(a => a.id === id);
+  },
+
+  checkRelationship(userId, patientId) {
+    // For Mock: Map 'usr_doc_1' -> 'doc_1'
+    const doctorId = userId === 'usr_doc_1' ? 'doc_1' : userId;
+    
+    // Check if there is ANY appointment connecting this doctor and patient
+    return mem.appointments.some(a => a.doctorId === doctorId && a.patientId === patientId);
   }
 };
