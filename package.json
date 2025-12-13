@@ -27,7 +27,8 @@
     "google-auth-library": "^10.5.0",
     "multer": "^2.0.2",
     "crypto": "^1.0.1",
-    "@prisma/client": "^7.1.0"
+    "@prisma/client": "^7.1.0",
+    "helmet": "^8.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

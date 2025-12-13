@@ -4,6 +4,7 @@ import { authRequired } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/rbac.js";
 import { doctorOwnsPatient } from "../../middleware/ownership.js";
 import { audit } from "../../middleware/audit.js";
+import { aiLimiter } from "../../middleware/limiter.js";
 
 export const clinicalRouter = Router();
 
@@ -97,10 +98,18 @@ clinicalRouter.get(
   ClinicalController.getMyLabs
 );
 
-// --- AI Insights (Secure) ---
+// --- Secure Document Access & AI ---
+
+// Securely get a temporary signed URL for a file
+clinicalRouter.get(
+  "/documents/:id/access",
+  audit("ACCESS", "document_file"),
+  ClinicalController.getFileAccess
+);
+
 clinicalRouter.get(
   "/documents/:id/ai",
-  // No strict role check here because both can access, but service handles logic
+  aiLimiter, // Specific limit for AI retrieval
   audit("AI_ACCESS", "document_ai"),
   ClinicalController.getAIInsight
 );

@@ -3,7 +3,9 @@ import { ClinicalService } from "./service.js";
 export const ClinicalController = {
   async searchPatients(req, res) {
     const { query = "" } = req.query;
-    const data = await ClinicalService.searchPatients(query);
+    // Basic sanitization
+    const sanitizedQuery = query.replace(/[^\w\s]/gi, '');
+    const data = await ClinicalService.searchPatients(sanitizedQuery);
     res.json({ data });
   },
 
@@ -14,21 +16,34 @@ export const ClinicalController = {
   },
 
   async createPrescription(req, res) {
-    const doctorId = 'doc_1'; 
-    const result = await ClinicalService.createPrescription(req.body, doctorId);
-    res.status(201).json({ data: result });
+    const doctorId = req.user.id; 
+    // Validation handled in Service
+    try {
+        const result = await ClinicalService.createPrescription(req.body, doctorId);
+        res.status(201).json({ data: result });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
   },
 
   async createLabOrder(req, res) {
-    const doctorId = 'doc_1'; 
-    const result = await ClinicalService.createLabOrder(req.body, doctorId);
-    res.status(201).json({ data: result });
+    const doctorId = req.user.id; 
+    try {
+        const result = await ClinicalService.createLabOrder(req.body, doctorId);
+        res.status(201).json({ data: result });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
   },
 
   async addNote(req, res) {
-    const doctorId = 'doc_1'; 
-    const result = await ClinicalService.addNote(req.body, doctorId);
-    res.status(201).json({ data: result });
+    const doctorId = req.user.id; 
+    try {
+        const result = await ClinicalService.addNote(req.body, doctorId);
+        res.status(201).json({ data: result });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
   },
 
   async startAppointment(req, res) {
@@ -45,7 +60,7 @@ export const ClinicalController = {
         const result = await ClinicalService.closeAppointment(req.params.id, req.body);
         res.json({ success: true, data: result });
     } catch (error) {
-        res.status(404).json({ error: error.message });
+        res.status(400).json({ error: error.message });
     }
   },
 
@@ -55,8 +70,12 @@ export const ClinicalController = {
   },
 
   async createAppointment(req, res) {
-      const result = await ClinicalService.createAppointment(req.body);
-      res.status(201).json({ data: result });
+      try {
+        const result = await ClinicalService.createAppointment(req.body);
+        res.status(201).json({ data: result });
+      } catch (e) {
+        res.status(400).json({ error: e.message });
+      }
   },
 
   async getMyPrescriptions(req, res) {
@@ -82,6 +101,15 @@ export const ClinicalController = {
           res.json({ data });
       } catch (error) {
           res.status(error.status || 500).json({ error: error.message || "Internal Error" });
+      }
+  },
+
+  async getFileAccess(req, res) {
+      try {
+          const result = await ClinicalService.getFileAccess(req.params.id, req.user);
+          res.json(result);
+      } catch (error) {
+          res.status(error.status || 403).json({ error: error.message || "Access Denied" });
       }
   }
 };

@@ -1,8 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
 import { GoogleGenAI } from '@google/genai';
-import rateLimit from 'express-rate-limit';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
@@ -12,6 +12,7 @@ import { requestId } from './middleware/requestId.js';
 import { metricsMiddleware } from './middleware/metrics.js';
 import { log } from './lib/logger.js';
 import { metrics } from './lib/metrics.js';
+import { globalLimiter, authLimiter, aiLimiter } from './middleware/limiter.js';
 
 // Bootstrap & Checks
 import { envCheck } from './bootstrap/envCheck.js';
@@ -32,6 +33,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const ENABLE_AI = process.env.ENABLE_AI_INSIGHTS !== 'false';
 
 if (process.env.USE_DB === "true") {
   log.info("System Startup", { mode: "Prisma/Postgres" });
@@ -47,13 +49,19 @@ const upload = multer({
 
 // --- Middleware Stack ---
 
-// 1. Request ID (Traceability)
+// 1. Security Headers (Helmet)
+app.use(helmet());
+
+// 2. Request ID (Traceability)
 app.use(requestId);
 
-// 2. Metrics (Observability)
+// 3. Metrics (Observability)
 app.use(metricsMiddleware);
 
-// 3. Structured Access Logging
+// 4. Global Rate Limit
+app.use(globalLimiter);
+
+// 5. Structured Access Logging
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
@@ -70,7 +78,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 4. Security Headers & CORS
+// 6. CORS
 app.use(cors({
   origin: process.env.CLIENT_URL,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -79,14 +87,6 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: '100kb' }));
-
-// 5. Rate Limiting
-app.use('/api/', rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  limit: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-}));
 
 // --- SYSTEM ROUTES ---
 
@@ -116,8 +116,8 @@ app.get('/health', async (req, res) => {
 });
 
 // Internal Metrics Endpoint (Protected)
-// In production, protect this with IP whitelist or specific internal auth
 app.get('/internal/metrics', (req, res) => {
+    // In production, ensure this is protected by VPN or internal network rules
     res.json(metrics.snapshot());
 });
 
@@ -129,27 +129,32 @@ app.get('/api/audit/mine', authRequired, (req, res) => {
   res.json({ data: logs });
 });
 
-// --- AUTH & AI (Legacy Handlers) ---
+// --- AUTH ROUTES (Strict Rate Limit) ---
+const authRouter = express.Router();
+authRouter.use(authLimiter);
+
 const users = [
     { id: 'usr_doc_1', name: 'Dr. Sarah Chen', email: 'doctor@wysh.com', role: 'doctor', password: 'password', avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300' },
     { id: 'usr_pat_1', name: 'Alex Doe', email: 'alex@example.com', role: 'patient', password: 'password', avatar: 'https://ui-avatars.com/api/?name=Alex+Doe&background=random' }
 ];
 
-app.post('/api/auth/login', (req, res) => {
+authRouter.post('/login', (req, res) => {
   const { email, password } = req.body;
   const user = users.find(u => u.email === email && (u.password === password || u.password === undefined));
   
   if (!user) {
       log.warn("Login Failed", { reqId: req.reqId, email });
-      return res.status(401).json({ error: 'Invalid credentials' });
+      // Add artificial delay to mitigate timing attacks
+      setTimeout(() => res.status(401).json({ error: 'Invalid credentials' }), 500);
+      return;
   }
   
-  const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '24h' });
+  const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '15m' }); // Short-lived access token
   AuditService.log(user.id, 'LOGIN', 'auth_system');
   res.json({ user, token });
 });
 
-app.post('/api/auth/register', (req, res) => {
+authRouter.post('/register', (req, res) => {
   const { name, email, password, role } = req.body;
   if (users.find(u => u.email === email)) return res.status(400).json({ error: 'User exists' });
   
@@ -160,24 +165,34 @@ app.post('/api/auth/register', (req, res) => {
   };
   users.push(newUser);
   
-  const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role, name: newUser.name }, JWT_SECRET, { expiresIn: '24h' });
+  const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role, name: newUser.name }, JWT_SECRET, { expiresIn: '15m' });
   AuditService.log(newUser.id, 'REGISTER', 'auth_system');
   res.status(201).json({ user: newUser, token });
 });
+
+app.use('/api/auth', authRouter);
 
 app.get('/api/auth/me', authRequired, (req, res) => {
   const user = users.find(u => u.id === req.user.id);
   res.json({ user: user || req.user });
 });
 
-// AI Routes
+// --- AI ROUTES (Very Strict Rate Limit) ---
+const aiRouter = express.Router();
+aiRouter.use(authRequired);
+aiRouter.use(aiLimiter); // Protect AI endpoints
+
 const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
-app.post('/api/ai/health-insight', authRequired, async (req, res) => {
+aiRouter.post('/health-insight', async (req, res) => {
+  if (!ENABLE_AI) return res.status(403).json({ error: "AI Features Disabled" });
   if (!ai) return res.status(503).json({ error: 'AI Service Unavailable' });
+  
   try {
     const { prompt } = req.body;
+    if (!prompt || typeof prompt !== 'string') return res.status(400).json({ error: "Invalid prompt" });
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -190,11 +205,15 @@ app.post('/api/ai/health-insight', authRequired, async (req, res) => {
   }
 });
 
-app.post('/api/ai/document-extract', authRequired, upload.single('file'), async (req, res) => {
+aiRouter.post('/document-extract', upload.single('file'), async (req, res) => {
+  if (!ENABLE_AI) return res.status(403).json({ error: "AI Features Disabled" });
   if (!ai) return res.status(503).json({ error: 'AI Service Unavailable' });
+  
   try {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'No file' });
+    
+    // Feature: Deduplication check could go here if hashes were stored
     
     const base64 = file.buffer.toString('base64');
     const prompt = `Extract medical data (summary, diagnosis, medications, labs) in JSON from this ${req.body.documentType}.`;
@@ -213,6 +232,8 @@ app.post('/api/ai/document-extract', authRequired, upload.single('file'), async 
     res.status(500).json({ error: 'Extraction Failed' });
   }
 });
+
+app.use('/api/ai', aiRouter);
 
 // Final Error Handler
 app.use(errorHandler);

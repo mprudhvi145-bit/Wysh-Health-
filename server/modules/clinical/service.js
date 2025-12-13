@@ -1,4 +1,5 @@
 import { Repo } from "./repo.js";
+import { randomUUID } from "crypto";
 
 // Helper for serialization/filtering
 const serializeChart = (data, role) => {
@@ -6,8 +7,6 @@ const serializeChart = (data, role) => {
     return {
       ...data,
       clinicalNotes: data.clinicalNotes?.filter(n => n.shared) || [],
-      // Remove sensitive fields if any
-      // documents: data.documents.filter(d => !d.internalOnly) 
     };
   }
   return data; // Doctors see everything
@@ -24,27 +23,31 @@ export const ClinicalService = {
   },
 
   async createPrescription(dto, doctorId) {
-    // Validation
+    // Strict Input Validation
     if (!dto.patientId) throw new Error("Patient ID is required");
-    if (!dto.items || dto.items.length === 0) throw new Error("Prescription must contain at least one medication");
+    if (!Array.isArray(dto.items) || dto.items.length === 0) throw new Error("Prescription must contain at least one medication");
     
-    // Item validation
-    for (const item of dto.items) {
-        if (!item.medicine || !item.dosage) throw new Error("Medication name and dosage are required");
-    }
+    // Validate each item
+    dto.items.forEach((item, index) => {
+        if (!item.medicine || typeof item.medicine !== 'string') throw new Error(`Invalid medicine at index ${index}`);
+        if (!item.dosage || typeof item.dosage !== 'string') throw new Error(`Invalid dosage at index ${index}`);
+    });
 
     return await Repo.createPrescription(dto, doctorId);
   },
 
   async createLabOrder(dto, doctorId) {
+    // Strict Input Validation
     if (!dto.patientId) throw new Error("Patient ID is required");
-    if (!dto.tests || dto.tests.length === 0) throw new Error("At least one test must be selected");
+    if (!Array.isArray(dto.tests) || dto.tests.length === 0) throw new Error("At least one test must be selected");
     
     return await Repo.createLabOrder(dto, doctorId);
   },
 
   async addNote(dto, doctorId) {
-    if (!dto.content) throw new Error("Note content cannot be empty");
+    if (!dto.content || typeof dto.content !== 'string' || dto.content.trim().length === 0) {
+        throw new Error("Note content cannot be empty");
+    }
     return await Repo.addNote(dto, doctorId);
   },
 
@@ -91,14 +94,14 @@ export const ClinicalService = {
     return await Repo.getAppointmentById(id);
   },
 
-  // NEW: AI Insight Retrieval with Security Guards
+  // AI Insight Retrieval with Security Guards
   async getAIInsight(documentId, user) {
     const doc = await Repo.getDocumentById(documentId);
     if (!doc) throw new Error("Document not found");
 
     // Security Check: Access Control
     if (user.role === 'patient') {
-        const patientId = user.id === 'usr_pat_1' ? 'p1' : user.id; // Mock mapping
+        const patientId = user.id === 'usr_pat_1' ? 'p1' : user.id; 
         if (doc.patientId !== patientId) {
             throw { status: 403, message: "Access Denied: Not your document" };
         }
@@ -115,7 +118,7 @@ export const ClinicalService = {
     const aiData = doc.extractedData;
     
     if (user.role === 'patient') {
-        // Patient Safe View: Summary Only
+        // Patient Safe View
         return {
             summary: aiData.summary,
             highlights: [
@@ -124,16 +127,41 @@ export const ClinicalService = {
             ],
             recommendations: ["Please discuss these results with your primary care physician."],
             source: "AI-assisted Analysis",
-            generatedAt: new Date().toISOString() // Or doc creation date
+            generatedAt: new Date().toISOString()
         };
     }
 
-    // Doctor View: Full Data + Confidence + Flags
+    // Doctor View
     return {
         ...aiData,
         source: "AI-Clinical Engine (Gemini 2.5)",
         redFlags: aiData.labs?.filter(l => l.flag === 'High' || l.flag === 'Critical') || [],
         rawConfidence: aiData.confidence
     };
+  },
+
+  // Secure File Access (Signed URL Simulation)
+  async getFileAccess(documentId, user) {
+      const doc = await Repo.getDocumentById(documentId);
+      if (!doc) throw { status: 404, message: "Document not found" };
+
+      // RBAC Check
+      if (user.role === 'patient') {
+         const patientId = user.id === 'usr_pat_1' ? 'p1' : user.id;
+         if (doc.patientId !== patientId) throw { status: 403, message: "Unauthorized" };
+      } else if (user.role === 'doctor') {
+         const hasAccess = await Repo.checkRelationship(user.id, doc.patientId);
+         if (!hasAccess) throw { status: 403, message: "Unauthorized" };
+      }
+
+      // Generate "Signed" URL (Mocked with token for demo)
+      const token = randomUUID();
+      const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes
+      
+      return {
+          url: doc.url, // In real S3/GCS this would be the signed url
+          token: token,
+          expiresAt: new Date(expiresAt).toISOString()
+      };
   }
 };
