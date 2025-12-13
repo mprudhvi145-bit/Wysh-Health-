@@ -1,12 +1,9 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 // Safely access env vars. In standard Vite dev/build, import.meta.env is defined.
-// The cast to any prevents TypeScript errors if types aren't fully loaded.
 const env = (import.meta.env || {}) as any;
 const apiKey = env.VITE_API_KEY || '';
-
-// Initialize client with whatever key we have; validation happens during calls
-const ai = new GoogleGenAI({ apiKey });
 
 export const generateHealthInsight = async (prompt: string): Promise<string> => {
   if (!apiKey) {
@@ -15,6 +12,9 @@ export const generateHealthInsight = async (prompt: string): Promise<string> => 
   }
 
   try {
+    // Initialize client lazily to ensure robust error handling if key is invalid
+    const ai = new GoogleGenAI({ apiKey });
+    
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,

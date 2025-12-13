@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
@@ -9,71 +8,72 @@ export const DNAHelix: React.FC<{ className?: string }> = React.memo(({ classNam
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    
-    // Safety check for zero dimensions
-    if (container.clientWidth === 0 || container.clientHeight === 0) return;
 
+    let renderer: THREE.WebGLRenderer | undefined;
     let animationId: number;
-    const scene = new THREE.Scene();
-    
-    const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.z = 10;
+    let scene: THREE.Scene;
+    let camera: THREE.PerspectiveCamera;
+    let dnaGroup: THREE.Group;
+    let initialized = false;
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    container.appendChild(renderer.domElement);
+    const init = () => {
+      if (container.clientWidth === 0 || container.clientHeight === 0) return;
+      
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.z = 10;
 
-    const dnaGroup = new THREE.Group();
-    scene.add(dnaGroup);
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
 
-    // Resources
-    const geometries: THREE.BufferGeometry[] = [];
-    const materials: THREE.Material[] = [];
+      dnaGroup = new THREE.Group();
+      scene.add(dnaGroup);
 
-    const particlesCount = 80;
-    const particleGeo = new THREE.SphereGeometry(0.12, 8, 8);
-    geometries.push(particleGeo);
+      // Resources
+      const particleGeo = new THREE.SphereGeometry(0.12, 8, 8);
+      const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1 });
+      const mat1 = new THREE.MeshBasicMaterial({ color: 0x4D8B83 }); // Teal
+      const mat2 = new THREE.MeshBasicMaterial({ color: 0x8763FF }); // Purple
 
-    const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1 });
-    const mat1 = new THREE.MeshBasicMaterial({ color: 0x4D8B83 }); // Teal
-    const mat2 = new THREE.MeshBasicMaterial({ color: 0x8763FF }); // Purple
-    materials.push(lineMaterial, mat1, mat2);
+      const particlesCount = 80;
+      for (let i = 0; i < particlesCount; i++) {
+          const t = i * 0.3;
+          const radius = 2;
+          
+          // Strand 1
+          const x1 = Math.cos(t) * radius;
+          const y1 = (i * 0.2) - (particlesCount * 0.1);
+          const z1 = Math.sin(t) * radius;
 
-    for (let i = 0; i < particlesCount; i++) {
-        const t = i * 0.3;
-        const radius = 2;
-        
-        // Strand 1
-        const x1 = Math.cos(t) * radius;
-        const y1 = (i * 0.2) - (particlesCount * 0.1);
-        const z1 = Math.sin(t) * radius;
+          // Strand 2
+          const x2 = Math.cos(t + Math.PI) * radius;
+          const y2 = y1;
+          const z2 = Math.sin(t + Math.PI) * radius;
 
-        // Strand 2
-        const x2 = Math.cos(t + Math.PI) * radius;
-        const y2 = y1;
-        const z2 = Math.sin(t + Math.PI) * radius;
+          const p1 = new THREE.Mesh(particleGeo, mat1);
+          p1.position.set(x1, y1, z1);
+          dnaGroup.add(p1);
 
-        const p1 = new THREE.Mesh(particleGeo, mat1);
-        p1.position.set(x1, y1, z1);
-        dnaGroup.add(p1);
+          const p2 = new THREE.Mesh(particleGeo, mat2);
+          p2.position.set(x2, y2, z2);
+          dnaGroup.add(p2);
 
-        const p2 = new THREE.Mesh(particleGeo, mat2);
-        p2.position.set(x2, y2, z2);
-        dnaGroup.add(p2);
+          if (i % 2 === 0) {
+              const points = [];
+              points.push(new THREE.Vector3(x1, y1, z1));
+              points.push(new THREE.Vector3(x2, y2, z2));
+              const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+              const line = new THREE.Line(lineGeo, lineMaterial);
+              dnaGroup.add(line);
+          }
+      }
+      initialized = true;
+      animate();
+    };
 
-        if (i % 2 === 0) {
-            const points = [];
-            points.push(new THREE.Vector3(x1, y1, z1));
-            points.push(new THREE.Vector3(x2, y2, z2));
-            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
-            const line = new THREE.Line(lineGeo, lineMaterial);
-            dnaGroup.add(line);
-            geometries.push(lineGeo);
-        }
-    }
-
-    // Interaction
+    // Interaction vars
     let mouseX = 0;
     let mouseY = 0;
     const windowHalfX = window.innerWidth / 2;
@@ -83,9 +83,9 @@ export const DNAHelix: React.FC<{ className?: string }> = React.memo(({ classNam
       mouseX = (event.clientX - windowHalfX) * 0.001;
       mouseY = (event.clientY - windowHalfY) * 0.001;
     };
-    document.addEventListener('mousemove', onDocumentMouseMove);
 
     const animate = () => {
+      if (!initialized || !renderer || !scene || !camera) return;
       animationId = requestAnimationFrame(animate);
       dnaGroup.rotation.y += 0.005; 
       dnaGroup.rotation.y += mouseX * 0.5;
@@ -93,25 +93,32 @@ export const DNAHelix: React.FC<{ className?: string }> = React.memo(({ classNam
       dnaGroup.position.y = Math.sin(Date.now() * 0.001) * 0.5;
       renderer.render(scene, camera);
     };
-    animate();
 
-    const handleResize = () => {
-        if (!container || container.clientWidth === 0 || container.clientHeight === 0) return;
-        camera.aspect = container.clientWidth / container.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(container.clientWidth, container.clientHeight);
-    };
-    window.addEventListener('resize', handleResize);
+    const resizeObserver = new ResizeObserver((entries) => {
+        if (!initialized) {
+            init();
+        } else if (renderer && camera && container) {
+             const width = container.clientWidth;
+             const height = container.clientHeight;
+             if (width === 0 || height === 0) return;
+             camera.aspect = width / height;
+             camera.updateProjectionMatrix();
+             renderer.setSize(width, height);
+        }
+    });
+
+    resizeObserver.observe(container);
+    document.addEventListener('mousemove', onDocumentMouseMove);
 
     return () => {
-      cancelAnimationFrame(animationId);
-      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
       document.removeEventListener('mousemove', onDocumentMouseMove);
-      geometries.forEach(g => g.dispose());
-      materials.forEach(m => m.dispose());
-      renderer.dispose();
-      if (container && renderer.domElement.parentNode === container) {
-        container.removeChild(renderer.domElement);
+      if (animationId) cancelAnimationFrame(animationId);
+      if (renderer) {
+          renderer.dispose();
+          if (container.contains(renderer.domElement)) {
+              container.removeChild(renderer.domElement);
+          }
       }
     };
   }, []);
@@ -126,83 +133,103 @@ export const HolographicModel: React.FC = React.memo(() => {
     useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
-        if (container.clientWidth === 0 || container.clientHeight === 0) return;
 
+        let renderer: THREE.WebGLRenderer | undefined;
         let animationId: number;
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-        camera.position.z = 6;
+        let scene: THREE.Scene;
+        let camera: THREE.PerspectiveCamera;
+        let sphere: THREE.Mesh;
+        let innerSphere: THREE.Mesh;
+        let particlesMesh: THREE.Points;
+        let initialized = false;
 
-        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        container.appendChild(renderer.domElement);
+        const init = () => {
+            if (container.clientWidth === 0 || container.clientHeight === 0) return;
 
-        const geometries: THREE.BufferGeometry[] = [];
-        const materials: THREE.Material[] = [];
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.z = 6;
 
-        const coreGeo = new THREE.IcosahedronGeometry(2, 2);
-        const coreMat = new THREE.MeshBasicMaterial({ 
-            color: 0x4D8B83, wireframe: true, transparent: true, opacity: 0.3 
-        });
-        const sphere = new THREE.Mesh(coreGeo, coreMat);
-        scene.add(sphere);
-        geometries.push(coreGeo);
-        materials.push(coreMat);
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
 
-        const innerGeo = new THREE.IcosahedronGeometry(1.5, 1);
-        const innerMat = new THREE.MeshBasicMaterial({
-            color: 0x8763FF, wireframe: true, transparent: true, opacity: 0.1
-        });
-        const innerSphere = new THREE.Mesh(innerGeo, innerMat);
-        scene.add(innerSphere);
-        geometries.push(innerGeo);
-        materials.push(innerMat);
+            const coreGeo = new THREE.IcosahedronGeometry(2, 2);
+            const coreMat = new THREE.MeshBasicMaterial({ 
+                color: 0x4D8B83, wireframe: true, transparent: true, opacity: 0.3 
+            });
+            sphere = new THREE.Mesh(coreGeo, coreMat);
+            scene.add(sphere);
 
-        const particlesGeo = new THREE.BufferGeometry();
-        const particlesCount = 200;
-        const posArray = new Float32Array(particlesCount * 3);
-        for(let i = 0; i < particlesCount * 3; i++) {
-            posArray[i] = (Math.random() - 0.5) * 8;
-        }
-        particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-        const particlesMat = new THREE.PointsMaterial({
-            size: 0.05, color: 0x7EC4BD, transparent: true, opacity: 0.8
-        });
-        const particlesMesh = new THREE.Points(particlesGeo, particlesMat);
-        scene.add(particlesMesh);
-        geometries.push(particlesGeo);
-        materials.push(particlesMat);
+            const innerGeo = new THREE.IcosahedronGeometry(1.5, 1);
+            const innerMat = new THREE.MeshBasicMaterial({
+                color: 0x8763FF, wireframe: true, transparent: true, opacity: 0.1
+            });
+            innerSphere = new THREE.Mesh(innerGeo, innerMat);
+            scene.add(innerSphere);
+
+            const particlesGeo = new THREE.BufferGeometry();
+            const particlesCount = 200;
+            const posArray = new Float32Array(particlesCount * 3);
+            for(let i = 0; i < particlesCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 8;
+            }
+            particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const particlesMat = new THREE.PointsMaterial({
+                size: 0.05, color: 0x7EC4BD, transparent: true, opacity: 0.8
+            });
+            particlesMesh = new THREE.Points(particlesGeo, particlesMat);
+            scene.add(particlesMesh);
+
+            initialized = true;
+            animate();
+        };
 
         const animate = () => {
+            if (!initialized || !renderer) return;
             animationId = requestAnimationFrame(animate);
-            sphere.rotation.x += 0.002;
-            sphere.rotation.y += 0.003;
-            innerSphere.rotation.x -= 0.002;
-            innerSphere.rotation.y -= 0.002;
-            particlesMesh.rotation.y += 0.001;
-            const scale = 1 + Math.sin(Date.now() * 0.001) * 0.05;
-            sphere.scale.set(scale, scale, scale);
+            if (sphere) {
+                sphere.rotation.x += 0.002;
+                sphere.rotation.y += 0.003;
+            }
+            if (innerSphere) {
+                innerSphere.rotation.x -= 0.002;
+                innerSphere.rotation.y -= 0.002;
+            }
+            if (particlesMesh) {
+                particlesMesh.rotation.y += 0.001;
+            }
+            if (sphere) {
+                const scale = 1 + Math.sin(Date.now() * 0.001) * 0.05;
+                sphere.scale.set(scale, scale, scale);
+            }
             renderer.render(scene, camera);
         };
-        animate();
 
-        const handleResize = () => {
-            if (!container || container.clientWidth === 0 || container.clientHeight === 0) return;
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-        };
-        window.addEventListener('resize', handleResize);
+        const resizeObserver = new ResizeObserver((entries) => {
+            if (!initialized) {
+                init();
+            } else if (renderer && camera && container) {
+                 const width = container.clientWidth;
+                 const height = container.clientHeight;
+                 if (width === 0 || height === 0) return;
+                 camera.aspect = width / height;
+                 camera.updateProjectionMatrix();
+                 renderer.setSize(width, height);
+            }
+        });
+    
+        resizeObserver.observe(container);
 
         return () => {
+            resizeObserver.disconnect();
             cancelAnimationFrame(animationId);
-            window.removeEventListener('resize', handleResize);
-            geometries.forEach(g => g.dispose());
-            materials.forEach(m => m.dispose());
-            renderer.dispose();
-            if(container && renderer.domElement.parentNode === container) {
-                container.removeChild(renderer.domElement);
+            if (renderer) {
+                renderer.dispose();
+                if(container.contains(renderer.domElement)) {
+                    container.removeChild(renderer.domElement);
+                }
             }
         }
     }, []);
@@ -222,18 +249,28 @@ export const NeuralGrid: React.FC = React.memo(() => {
         if (!ctx) return;
 
         let animationId: number;
-        let w = canvas.width = window.innerWidth;
-        let h = canvas.height = window.innerHeight;
+        
+        // Initial setup
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        let w = canvas.width;
+        let h = canvas.height;
         
         const dots: {x: number, y: number, vx: number, vy: number}[] = [];
-        for(let i=0; i<60; i++) {
-            dots.push({
-                x: Math.random() * w,
-                y: Math.random() * h,
-                vx: (Math.random() - 0.5) * 0.5,
-                vy: (Math.random() - 0.5) * 0.5
-            });
-        }
+        // Create dots based on initial size
+        const initDots = () => {
+            dots.length = 0;
+            const count = Math.min(60, Math.floor((w * h) / 15000)); // Responsive count
+            for(let i=0; i<count; i++) {
+                dots.push({
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5
+                });
+            }
+        };
+        initDots();
 
         const animate = () => {
             ctx.clearRect(0,0,w,h);
@@ -269,6 +306,7 @@ export const NeuralGrid: React.FC = React.memo(() => {
             if (canvas) {
                 w = canvas.width = window.innerWidth;
                 h = canvas.height = window.innerHeight;
+                // Optional: re-init dots or just let them bound around new dims
             }
         }
 
