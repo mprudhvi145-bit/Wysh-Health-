@@ -147,12 +147,12 @@ export const PatientDashboard: React.FC = () => {
               <div className="space-y-4">
                 {MOCK_DOCTORS.slice(0,2).map(doc => (
                   <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/5 cursor-pointer" onClick={() => navigate(`/doctors/${doc.id}`)}>
-                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-xs overflow-hidden">
+                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-xs overflow-hidden flex-shrink-0">
                        <img src={doc.image || ''} alt={doc.name} className="w-full h-full object-cover" />
                     </div>
-                    <div className="flex-1">
-                      <h4 className="text-white text-sm font-medium">{doc.name}</h4>
-                      <p className="text-text-secondary text-xs">{doc.specialty}</p>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-white text-sm font-medium truncate">{doc.name}</h4>
+                      <p className="text-text-secondary text-xs truncate">{doc.specialty}</p>
                     </div>
                     <Button variant="outline" className="!py-1 !px-3 text-xs h-8">Book</Button>
                   </div>
@@ -163,23 +163,25 @@ export const PatientDashboard: React.FC = () => {
 
           {/* Right Column: Appointments */}
           <div className="space-y-6">
-            <GlassCard className="h-full">
-              <div className="flex justify-between items-center mb-6">
+            <GlassCard className="h-full flex flex-col">
+              <div className="flex justify-between items-center mb-6 flex-shrink-0">
                 <h3 className="text-white font-bold">Upcoming Appointments</h3>
                 <span className="text-xs text-teal cursor-pointer hover:underline" onClick={() => navigate('/doctors')}>New Booking</span>
               </div>
               
-              <AppointmentList appointments={appointments} loading={loadingAppointments} />
+              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-[200px] max-h-[500px]">
+                <AppointmentList appointments={appointments} loading={loadingAppointments} />
+              </div>
 
-              <div className="mt-8 pt-6 border-t border-white/10">
+              <div className="mt-6 pt-6 border-t border-white/10 flex-shrink-0">
                 <h3 className="text-white font-bold mb-4">Pending Actions</h3>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3 text-sm text-text-secondary">
-                    <div className="mt-1 w-2 h-2 rounded-full bg-teal" />
+                    <div className="mt-1 w-2 h-2 rounded-full bg-teal flex-shrink-0" />
                     <p>Complete pre-visit questionnaire for Dr. Sarah</p>
                   </div>
                    <div className="flex items-start gap-3 text-sm text-text-secondary">
-                    <div className="mt-1 w-2 h-2 rounded-full bg-purple" />
+                    <div className="mt-1 w-2 h-2 rounded-full bg-purple flex-shrink-0" />
                     <p>Upload insurance card updated photo</p>
                   </div>
                 </div>

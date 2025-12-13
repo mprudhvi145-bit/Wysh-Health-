@@ -31,17 +31,17 @@ export const AppointmentList: React.FC<AppointmentListProps> = ({ appointments, 
     <div className="space-y-3">
       {sorted.map(apt => (
         <div key={apt.id} className="group relative p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all duration-300">
-            <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10">
+            <div className="flex justify-between items-start mb-3 gap-2">
+                <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
                         <img src={apt.doctorImage} alt={apt.doctorName} className="w-full h-full object-cover" />
                     </div>
-                    <div>
-                        <h4 className="text-white font-bold text-sm">{apt.doctorName}</h4>
-                        <p className="text-xs text-text-secondary">{apt.doctorSpecialty}</p>
+                    <div className="min-w-0">
+                        <h4 className="text-white font-bold text-sm truncate">{apt.doctorName}</h4>
+                        <p className="text-xs text-text-secondary truncate">{apt.doctorSpecialty}</p>
                     </div>
                 </div>
-                <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${apt.type === 'video' ? 'bg-purple/10 text-purple' : 'bg-teal/10 text-teal'}`}>
+                <div className={`flex-shrink-0 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${apt.type === 'video' ? 'bg-purple/10 text-purple' : 'bg-teal/10 text-teal'}`}>
                     {apt.type}
                 </div>
             </div>
@@ -58,16 +58,17 @@ export const AppointmentList: React.FC<AppointmentListProps> = ({ appointments, 
             </div>
 
             {apt.type === 'video' && apt.status === 'confirmed' && (
-                <a href={apt.meetingLink} target="_blank" rel="noopener noreferrer">
-                    <Button variant="primary" className="w-full !py-2 text-xs h-8" icon={<Video size={12} />}>
+                <a href={apt.meetingLink} target="_blank" rel="noopener noreferrer" className="block w-full">
+                    <Button variant="primary" className="w-full !py-2 text-xs h-8 justify-center" icon={<Video size={12} />}>
                         Join Call
                     </Button>
                 </a>
             )}
             
              {apt.type === 'in-person' && (
-                <div className="flex items-center gap-1.5 text-xs text-text-secondary bg-black/20 p-2 rounded">
-                    <MapPin size={12} /> Silicon Valley Main Campus
+                <div className="flex items-center gap-1.5 text-xs text-text-secondary bg-black/20 p-2 rounded truncate">
+                    <MapPin size={12} className="flex-shrink-0" />
+                    <span className="truncate">Silicon Valley Main Campus</span>
                 </div>
             )}
         </div>

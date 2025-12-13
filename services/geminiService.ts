@@ -1,10 +1,18 @@
 import { GoogleGenAI } from "@google/genai";
 
-const apiKey = process.env.API_KEY || '';
+// Safely access env vars. In standard Vite dev/build, import.meta.env is defined.
+// The cast to any prevents TypeScript errors if types aren't fully loaded.
+const env = (import.meta.env || {}) as any;
+const apiKey = env.VITE_API_KEY || '';
+
+// Initialize client with whatever key we have; validation happens during calls
 const ai = new GoogleGenAI({ apiKey });
 
 export const generateHealthInsight = async (prompt: string): Promise<string> => {
-  if (!apiKey) return "AI Configuration Missing: API Key not found.";
+  if (!apiKey) {
+    console.warn("Wysh Care: VITE_API_KEY is missing from environment variables.");
+    return "AI Configuration Error: API Key not found in environment.";
+  }
 
   try {
     const response = await ai.models.generateContent({
