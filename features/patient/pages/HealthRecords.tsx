@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard, Button, Badge, Modal, Input, Loader, Checkbox } from '../../../components/UI';
 import { patientService, HealthRecord, ExtractedMedicalData } from '../../../services/patientService';
-import { Upload, FileText, CheckCircle, Brain, Calendar, Camera, Pill, Activity, Save } from 'lucide-react';
+import { Upload, FileText, CheckCircle, Brain, Calendar, Camera, Pill, Activity, Save, Shield } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotification } from '../../../context/NotificationContext';
 
@@ -128,7 +128,7 @@ export const HealthRecords: React.FC = () => {
               {rec.summary && (
                 <div className="bg-white/5 p-3 rounded-lg border border-white/5 mb-4 flex-grow">
                   <p className="text-xs text-teal font-bold mb-1 flex items-center gap-1">
-                    <Brain size={12} /> AI Summary
+                    <Brain size={12} /> AI Assisted Summary
                   </p>
                   <p className="text-xs text-text-secondary line-clamp-3">{rec.summary}</p>
                 </div>
@@ -145,7 +145,6 @@ export const HealthRecords: React.FC = () => {
 
               <div className="mt-auto flex gap-2">
                 <Button variant="outline" className="flex-1 text-xs justify-center">View</Button>
-                {/* <Button variant="outline" className="flex-1 text-xs justify-center">Share</Button> */}
               </div>
             </GlassCard>
           ))
@@ -314,6 +313,10 @@ export const HealthRecords: React.FC = () => {
                )}
 
                <div className="pt-4 border-t border-white/10">
+                   <div className="flex items-start gap-2 text-xs text-text-secondary mb-2 p-2 bg-purple/10 border border-purple/20 rounded">
+                      <Shield size={16} className="text-purple flex-shrink-0" />
+                      <p>Wysh Care AI acts as a Documentation Assistant. By saving, you confirm that you have verified the extracted information against the original document.</p>
+                   </div>
                    <Checkbox 
                      id="data-consent"
                      checked={consent}

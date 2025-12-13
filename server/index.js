@@ -133,9 +133,24 @@ app.get('/api/audit/mine', authRequired, (req, res) => {
 const authRouter = express.Router();
 authRouter.use(authLimiter);
 
+// DEMO ACCOUNTS - SEEDED FOR INVESTOR DEMO
 const users = [
-    { id: 'usr_doc_1', name: 'Dr. Sarah Chen', email: 'doctor@wysh.com', role: 'doctor', password: 'password', avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300' },
-    { id: 'usr_pat_1', name: 'Alex Doe', email: 'alex@example.com', role: 'patient', password: 'password', avatar: 'https://ui-avatars.com/api/?name=Alex+Doe&background=random' }
+    { 
+        id: 'usr_doc_1', 
+        name: 'Dr. Sarah Chen', 
+        email: 'doctor@wysh.demo', // Matches Demo Checklist
+        role: 'doctor', 
+        password: 'password', 
+        avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300' 
+    },
+    { 
+        id: 'usr_pat_1', 
+        name: 'Alex Doe', 
+        email: 'patient@wysh.demo', // Matches Demo Checklist
+        role: 'patient', 
+        password: 'password', 
+        avatar: 'https://ui-avatars.com/api/?name=Alex+Doe&background=random' 
+    }
 ];
 
 authRouter.post('/login', (req, res) => {
