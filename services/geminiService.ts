@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 export const generateHealthInsight = async (prompt: string): Promise<string> => {
