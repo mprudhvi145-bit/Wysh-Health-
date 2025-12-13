@@ -28,13 +28,14 @@ export const AppointmentListPage: React.FC = () => {
     const aptDate = new Date(`${apt.date}T${apt.time}`);
     const now = new Date();
     
-    if (apt.status === 'cancelled') return activeTab === 'history';
-    if (apt.status === 'completed') return activeTab === 'history';
+    if (apt.status === 'cancelled' || apt.status === 'completed') {
+      return activeTab === 'history';
+    }
 
     if (activeTab === 'upcoming') {
-      return aptDate >= now && apt.status !== 'cancelled' && apt.status !== 'completed';
+      return aptDate >= now;
     } else {
-      return aptDate < now || apt.status === 'cancelled' || apt.status === 'completed';
+      return aptDate < now;
     }
   }).sort((a, b) => {
       const d1 = new Date(`${a.date}T${a.time}`).getTime();

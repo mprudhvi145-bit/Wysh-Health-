@@ -32,11 +32,22 @@ const aiLimiter = rateLimit({
 // --- AI Service Setup ---
 
 // Initialize with API Key from environment variables (Server-side only)
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+
+if (!apiKey) {
+  console.error("FATAL: GEMINI_API_KEY is not set. Please check your .env file.");
+  // We don't exit here to allow /health check to pass, but AI calls will fail gracefully
+}
+
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 // --- Routes ---
 
 app.post('/api/ai/health-insight', aiLimiter, async (req, res) => {
+  if (!ai) {
+    return res.status(503).json({ error: 'AI Service not configured (Missing API Key).' });
+  }
+
   try {
     const { prompt, systemInstruction } = req.body;
 
