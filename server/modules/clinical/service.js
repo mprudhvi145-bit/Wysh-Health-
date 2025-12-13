@@ -24,14 +24,27 @@ export const ClinicalService = {
   },
 
   async createPrescription(dto, doctorId) {
+    // Validation
+    if (!dto.patientId) throw new Error("Patient ID is required");
+    if (!dto.items || dto.items.length === 0) throw new Error("Prescription must contain at least one medication");
+    
+    // Item validation
+    for (const item of dto.items) {
+        if (!item.medicine || !item.dosage) throw new Error("Medication name and dosage are required");
+    }
+
     return await Repo.createPrescription(dto, doctorId);
   },
 
   async createLabOrder(dto, doctorId) {
+    if (!dto.patientId) throw new Error("Patient ID is required");
+    if (!dto.tests || dto.tests.length === 0) throw new Error("At least one test must be selected");
+    
     return await Repo.createLabOrder(dto, doctorId);
   },
 
   async addNote(dto, doctorId) {
+    if (!dto.content) throw new Error("Note content cannot be empty");
     return await Repo.addNote(dto, doctorId);
   },
 
@@ -40,6 +53,7 @@ export const ClinicalService = {
   },
 
   async closeAppointment(appointmentId, dto) {
+    if (!dto.diagnosis) throw new Error("Diagnosis is required to close a visit");
     return await Repo.closeAppointment(appointmentId, dto);
   },
   
@@ -55,6 +69,9 @@ export const ClinicalService = {
   },
 
   async createAppointment(dto) {
+      if (!dto.doctorId || !dto.patientId || !dto.date || !dto.time) {
+          throw new Error("Missing required appointment fields");
+      }
       return await Repo.createAppointment(dto);
   },
 

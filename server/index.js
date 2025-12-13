@@ -6,13 +6,18 @@ import rateLimit from 'express-rate-limit';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
-import { randomUUID } from 'crypto';
+
+// Observability Imports
+import { requestId } from './middleware/requestId.js';
+import { metricsMiddleware } from './middleware/metrics.js';
+import { log } from './lib/logger.js';
+import { metrics } from './lib/metrics.js';
 
 // Bootstrap & Checks
 import { envCheck } from './bootstrap/envCheck.js';
 import { prisma } from './lib/prisma.js';
 
-// Import new modular routes
+// Modules
 import { clinicalRouter } from './modules/clinical/routes.js';
 import { authRequired } from './middleware/auth.js';
 import { errorHandler } from './middleware/error.js';
@@ -20,19 +25,18 @@ import { AuditService } from './modules/audit/service.js';
 
 dotenv.config();
 
-// 1. Fail-fast if config is missing
+// 1. Fail-fast
 envCheck();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET; // Checked in envCheck
+const JWT_SECRET = process.env.JWT_SECRET;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
-// Persistence Mode Check
 if (process.env.USE_DB === "true") {
-  console.log("🟦 Clinical Repo: Prisma (PostgreSQL)");
+  log.info("System Startup", { mode: "Prisma/Postgres" });
 } else {
-  console.log("🟨 Clinical Repo: In-memory (Mock)");
+  log.warn("System Startup", { mode: "In-Memory (Mock)" });
 }
 
 // Multer setup
@@ -41,44 +45,51 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+// --- Middleware Stack ---
 
-// --- Middleware ---
+// 1. Request ID (Traceability)
+app.use(requestId);
 
-// 2. Request Logging (Structured, No PII)
+// 2. Metrics (Observability)
+app.use(metricsMiddleware);
+
+// 3. Structured Access Logging
 app.use((req, res, next) => {
-  req.id = randomUUID();
   const start = Date.now();
-  
   res.on('finish', () => {
     const duration = Date.now() - start;
-    // Log format: [ID] METHOD PATH STATUS DURATION
-    // In prod, ship this to a log aggregator
-    console.log(`[REQ] ${req.id} | ${req.method} ${req.path} ${res.statusCode} (${duration}ms)`);
+    log.info("HTTP Access", {
+      reqId: req.reqId,
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      durationMs: duration,
+      userAgent: req.get('user-agent')
+    });
   });
-  
   next();
 });
 
-// 3. Strict CORS
+// 4. Security Headers & CORS
 app.use(cors({
-  origin: process.env.CLIENT_URL, // Must be explicit in production
+  origin: process.env.CLIENT_URL,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
   credentials: true
 }));
 
 app.use(express.json({ limit: '100kb' }));
 
-// Rate Limiter
+// 5. Rate Limiting
 app.use('/api/', rateLimit({
   windowMs: 15 * 60 * 1000, 
   limit: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
 }));
 
 // --- SYSTEM ROUTES ---
 
-// 4. Health Check (Load Balancer Safe)
 app.get('/health', async (req, res) => {
     const health = {
         status: 'ok',
@@ -94,6 +105,7 @@ app.get('/health', async (req, res) => {
         } catch (e) {
             health.db = 'disconnected';
             health.status = 'degraded';
+            log.error("Health Check Failed", { error: e.message });
             return res.status(503).json(health);
         }
     } else {
@@ -103,34 +115,37 @@ app.get('/health', async (req, res) => {
     res.json(health);
 });
 
-// --- MOUNT MODULAR ROUTES ---
+// Internal Metrics Endpoint (Protected)
+// In production, protect this with IP whitelist or specific internal auth
+app.get('/internal/metrics', (req, res) => {
+    res.json(metrics.snapshot());
+});
+
+// --- API ROUTES ---
 app.use('/api/clinical', clinicalRouter);
 
-// Debug Route for Audit Logs (Secure)
 app.get('/api/audit/mine', authRequired, (req, res) => {
   const logs = AuditService.listByActor(req.user.id);
   res.json({ data: logs });
 });
 
-// --- LEGACY / AUTH / AI ROUTES (Keep in index.js for now or refactor later) ---
-
-// Mock User DB for Auth (Sync with repo.memory.js logic ideally, but keeping simple here for Auth endpoints)
+// --- AUTH & AI (Legacy Handlers) ---
 const users = [
     { id: 'usr_doc_1', name: 'Dr. Sarah Chen', email: 'doctor@wysh.com', role: 'doctor', password: 'password', avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300' },
     { id: 'usr_pat_1', name: 'Alex Doe', email: 'alex@example.com', role: 'patient', password: 'password', avatar: 'https://ui-avatars.com/api/?name=Alex+Doe&background=random' }
 ];
 
-// Auth Routes
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
   const user = users.find(u => u.email === email && (u.password === password || u.password === undefined));
-  if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+  
+  if (!user) {
+      log.warn("Login Failed", { reqId: req.reqId, email });
+      return res.status(401).json({ error: 'Invalid credentials' });
+  }
   
   const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '24h' });
-  
-  // Audit Login
   AuditService.log(user.id, 'LOGIN', 'auth_system');
-  
   res.json({ user, token });
 });
 
@@ -146,20 +161,16 @@ app.post('/api/auth/register', (req, res) => {
   users.push(newUser);
   
   const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role, name: newUser.name }, JWT_SECRET, { expiresIn: '24h' });
-  
   AuditService.log(newUser.id, 'REGISTER', 'auth_system');
-  
   res.status(201).json({ user: newUser, token });
 });
 
 app.get('/api/auth/me', authRequired, (req, res) => {
-  // Mock finding user
   const user = users.find(u => u.id === req.user.id);
   res.json({ user: user || req.user });
 });
 
-
-// AI Service Routes
+// AI Routes
 const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
@@ -171,12 +182,10 @@ app.post('/api/ai/health-insight', authRequired, async (req, res) => {
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
-    
-    // Log AI Usage
     AuditService.log(req.user.id, 'GENERATE_INSIGHT', 'gemini_flash');
-    
     res.json({ text: response.text });
   } catch (err) {
+    log.error("AI Generation Failed", { reqId: req.reqId, error: err.message });
     res.status(500).json({ error: 'AI Error' });
   }
 });
@@ -197,19 +206,17 @@ app.post('/api/ai/document-extract', authRequired, upload.single('file'), async 
     });
     
     let jsonStr = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
     AuditService.log(req.user.id, 'EXTRACT_DOC_DATA', `doc_type:${req.body.documentType}`);
-    
     res.json({ success: true, data: JSON.parse(jsonStr) });
   } catch (err) {
-    console.error(err);
+    log.error("AI Extraction Failed", { reqId: req.reqId, error: err.message });
     res.status(500).json({ error: 'Extraction Failed' });
   }
 });
 
-// Use Global Error Handler (Last Middleware)
+// Final Error Handler
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`Wysh Care OS Server running on port ${PORT}`);
+  log.info(`Wysh Care OS Server listening`, { port: PORT, env: process.env.NODE_ENV });
 });

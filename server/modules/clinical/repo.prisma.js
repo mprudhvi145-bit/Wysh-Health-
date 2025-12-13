@@ -1,10 +1,14 @@
 import { prisma } from "../../lib/prisma.js";
 
+// Global filter helper for Soft Deletes in inclusions
+const notDeleted = { where: { deletedAt: null } };
+
 export const PrismaRepo = {
   async searchPatients(query) {
     return prisma.patient.findMany({
       where: {
-        name: { contains: query, mode: "insensitive" }
+        name: { contains: query, mode: "insensitive" },
+        // deletedAt: null // Assuming Patient model has this
       },
       take: 20,
     });
@@ -14,11 +18,17 @@ export const PrismaRepo = {
     const patient = await prisma.patient.findUnique({
       where: { id: patientId },
       include: {
-        appointments: true,
-        prescriptions: { include: { items: true } },
-        labOrders: true,
-        clinicalNotes: { orderBy: { createdAt: 'desc' } },
-        documents: true,
+        appointments: notDeleted,
+        prescriptions: { 
+            where: { deletedAt: null },
+            include: { items: true } // Items should also be checked if they soft delete independently
+        },
+        labOrders: notDeleted,
+        clinicalNotes: { 
+            where: { deletedAt: null },
+            orderBy: { createdAt: 'desc' } 
+        },
+        documents: notDeleted,
       },
     });
     
@@ -72,14 +82,35 @@ export const PrismaRepo = {
   },
 
   async startAppointment(appointmentId) {
-    return prisma.appointment.update({
-      where: { id: appointmentId },
-      data: { status: "IN_PROGRESS" },
+    return prisma.$transaction(async (tx) => {
+        // 1. Fetch current state
+        const appt = await tx.appointment.findUnique({ where: { id: appointmentId } });
+        if (!appt) throw new Error("Appointment not found");
+        
+        // 2. Enforce Strict Transition
+        if (appt.status !== 'SCHEDULED') {
+            throw new Error("Invalid State: Can only start SCHEDULED appointments.");
+        }
+
+        // 3. Update
+        return tx.appointment.update({
+            where: { id: appointmentId },
+            data: { status: "IN_PROGRESS" },
+        });
     });
   },
 
   async closeAppointment(appointmentId, summary) {
     return prisma.$transaction(async (tx) => {
+      // 1. Fetch & Verify State
+      const current = await tx.appointment.findUnique({ where: { id: appointmentId }});
+      if (!current) throw new Error("Appointment not found");
+      
+      if (current.status !== 'IN_PROGRESS') {
+          throw new Error("Invalid State: Can only close IN_PROGRESS appointments.");
+      }
+
+      // 2. Update Appointment
       const appt = await tx.appointment.update({
         where: { id: appointmentId },
         data: { 
@@ -88,6 +119,7 @@ export const PrismaRepo = {
         },
       });
       
+      // 3. Create Summary Note (Atomically)
       await tx.clinicalNote.create({
         data: {
           patientId: appt.patientId,
@@ -102,7 +134,7 @@ export const PrismaRepo = {
   },
 
   async getAppointments(filters = {}) {
-    const where = {};
+    const where = { deletedAt: null }; // Soft delete filter
     if (filters.doctorId) where.doctorId = filters.doctorId;
     if (filters.patientId) where.patientId = filters.patientId;
 
@@ -125,8 +157,8 @@ export const PrismaRepo = {
   },
 
   async getAppointmentById(id) {
-    return prisma.appointment.findUnique({
-      where: { id }
+    return prisma.appointment.findFirst({
+      where: { id, deletedAt: null }
     });
   },
 
@@ -135,15 +167,29 @@ export const PrismaRepo = {
     const count = await prisma.appointment.count({
         where: {
             doctorId: doctorId,
-            patientId: patientId
+            patientId: patientId,
+            deletedAt: null
         }
     });
     return count > 0;
   },
 
   async getDocumentById(id) {
-    return prisma.document.findUnique({
-      where: { id }
+    return prisma.document.findFirst({
+      where: { id, deletedAt: null }
     });
+  },
+
+  // Generic Soft Delete
+  async softDelete(model, id, userId) {
+      if (!prisma[model]) throw new Error("Invalid model for deletion");
+      
+      return prisma[model].update({
+          where: { id },
+          data: {
+              deletedAt: new Date(),
+              // deletedBy: userId // Assuming schema has this field
+          }
+      });
   }
 };

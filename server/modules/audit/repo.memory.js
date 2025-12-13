@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { log } from '../../lib/logger.js';
 
 const memAudit = [];
 
@@ -10,8 +11,13 @@ export const AuditRepo = {
       ...record,
     };
     memAudit.push(entry);
-    // Console log for immediate visibility during development
-    console.log(`[AUDIT] ${entry.createdAt.toISOString()} | ${record.action} | ${record.resource} | ${record.actorId}`);
+    // Log to standard out via structured logger for persistence/shipping
+    log.info("Audit Log", {
+        type: "AUDIT_EVENT",
+        actorId: record.actorId,
+        action: record.action,
+        resource: record.resource
+    });
   },
 
   listByActor(actorId) {

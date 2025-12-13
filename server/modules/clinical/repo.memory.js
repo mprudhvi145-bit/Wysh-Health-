@@ -75,6 +75,9 @@ export const mem = {
   ]
 };
 
+// Helper to filter out soft-deleted items
+const active = (item) => !item.deletedAt;
+
 export const Repo = {
   searchPatients(query) {
     if (!query) return mem.patients;
@@ -86,11 +89,11 @@ export const Repo = {
   getPatientChart(patientId) {
     return {
       patient: mem.patients.find(p => p.id === patientId),
-      appointments: mem.appointments.filter(a => a.patientId === patientId),
-      prescriptions: mem.prescriptions.filter(p => p.patientId === patientId),
-      labs: mem.labs.filter(l => l.patientId === patientId),
-      clinicalNotes: mem.notes.filter(n => n.patientId === patientId), 
-      documents: mem.documents.filter(d => d.patientId === patientId),
+      appointments: mem.appointments.filter(a => a.patientId === patientId && active(a)),
+      prescriptions: mem.prescriptions.filter(p => p.patientId === patientId && active(p)),
+      labs: mem.labs.filter(l => l.patientId === patientId && active(l)),
+      clinicalNotes: mem.notes.filter(n => n.patientId === patientId && active(n)), 
+      documents: mem.documents.filter(d => d.patientId === patientId && active(d)),
     };
   },
 
@@ -121,7 +124,11 @@ export const Repo = {
   startAppointment(appointmentId) {
     const appt = mem.appointments.find(a => a.id === appointmentId);
     if (!appt) throw new Error("Appointment not found");
-    if (appt.status !== 'SCHEDULED') throw new Error("Appointment cannot be started (must be SCHEDULED)");
+    
+    // Strict State Transition: SCHEDULED -> IN_PROGRESS only
+    if (appt.status !== 'SCHEDULED') {
+        throw new Error(`Invalid state transition. Cannot start appointment from status: ${appt.status}`);
+    }
     
     appt.status = 'IN_PROGRESS';
     appt.startedAt = new Date().toISOString();
@@ -131,6 +138,11 @@ export const Repo = {
   closeAppointment(appointmentId, summary) {
     const appt = mem.appointments.find(a => a.id === appointmentId);
     if (!appt) throw new Error("Appointment not found");
+    
+    // Strict State Transition: IN_PROGRESS -> COMPLETED only
+    if (appt.status !== 'IN_PROGRESS') {
+        throw new Error(`Invalid state transition. Cannot close appointment from status: ${appt.status}. Must be IN_PROGRESS.`);
+    }
     
     appt.status = "COMPLETED";
     appt.summary = summary;
@@ -156,6 +168,7 @@ export const Repo = {
   
   getAppointments(filters = {}) {
      return mem.appointments.filter(a => {
+        if (!active(a)) return false; // Filter deleted
         let match = true;
         if (filters.doctorId) match = match && a.doctorId === filters.doctorId;
         if (filters.patientId) match = match && a.patientId === filters.patientId;
@@ -164,15 +177,38 @@ export const Repo = {
   },
 
   getAppointmentById(id) {
-    return mem.appointments.find(a => a.id === id);
+    const appt = mem.appointments.find(a => a.id === id);
+    if (appt && !active(appt)) return null;
+    return appt;
   },
 
   checkRelationship(userId, patientId) {
     const doctorId = userId === 'usr_doc_1' ? 'doc_1' : userId;
-    return mem.appointments.some(a => a.doctorId === doctorId && a.patientId === patientId);
+    return mem.appointments.some(a => a.doctorId === doctorId && a.patientId === patientId && active(a));
   },
 
   getDocumentById(id) {
-    return mem.documents.find(d => d.id === id);
+    const doc = mem.documents.find(d => d.id === id);
+    if (doc && !active(doc)) return null;
+    return doc;
+  },
+
+  // Soft Delete Implementation
+  softDelete(entityType, id, userId) {
+      let collection;
+      switch(entityType) {
+          case 'prescription': collection = mem.prescriptions; break;
+          case 'note': collection = mem.notes; break;
+          case 'document': collection = mem.documents; break;
+          default: return false;
+      }
+      
+      const item = collection.find(i => i.id === id);
+      if (item) {
+          item.deletedAt = new Date().toISOString();
+          item.deletedBy = userId;
+          return true;
+      }
+      return false;
   }
 };
