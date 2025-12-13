@@ -41,13 +41,14 @@ export const PrismaRepo = {
         documents: notDeleted,
         problems: true,
         allergies: true,
-        vitals: true
+        vitals: { orderBy: { recordedAt: 'desc' }, take: 10 },
+        immunizations: true
       },
     });
     
     if (!patient) return {};
 
-    const { encounters, prescriptions, labOrders, notes, documents, user, problems, allergies, vitals, ...patientData } = patient;
+    const { encounters, prescriptions, labOrders, notes, documents, user, problems, allergies, vitals, immunizations, ...patientData } = patient;
     
     // Merge user data into patient for frontend compatibility
     const patientProfile = {
@@ -57,7 +58,7 @@ export const PrismaRepo = {
         abha: user.abhaId ? { id: user.abhaId, address: user.abhaAddress, status: user.abhaLinked ? 'LINKED' : 'PENDING' } : null,
         problems,
         allergies: allergies.map(a => a.allergen),
-        chronicConditions: problems.map(p => p.diagnosis)
+        chronicConditions: problems.filter(p => p.status === 'Active').map(p => p.diagnosis)
     };
 
     return {
@@ -76,7 +77,6 @@ export const PrismaRepo = {
   },
 
   async createPrescription(input, doctorId) {
-    // Ensure Patient exists first to avoid relation errors if input.patientId is raw
     return prisma.prescription.create({
       data: {
         patientId: input.patientId,
