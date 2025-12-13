@@ -7,24 +7,30 @@ export const PrismaRepo = {
   async searchPatients(query) {
     return prisma.patient.findMany({
       where: {
-        name: { contains: query, mode: "insensitive" },
-        // deletedAt: null // Assuming Patient model has this
+        // Search by name on the related User model since Patient table is normalized
+        user: {
+            name: { contains: query, mode: "insensitive" }
+        }
+      },
+      include: {
+          user: true // Include user details
       },
       take: 20,
-    });
+    }).then(patients => patients.map(p => ({ ...p, name: p.user.name, email: p.user.email })));
   },
 
   async getPatientChart(patientId) {
     const patient = await prisma.patient.findUnique({
       where: { id: patientId },
       include: {
-        appointments: notDeleted,
+        user: true,
+        encounters: notDeleted, // Renamed from appointments
         prescriptions: { 
             where: { deletedAt: null },
-            include: { items: true } // Items should also be checked if they soft delete independently
+            include: { items: true }
         },
         labOrders: notDeleted,
-        clinicalNotes: { 
+        notes: { // Renamed from clinicalNotes in schema relations usually, but let's check schema. Relation is `notes` in Patient model.
             where: { deletedAt: null },
             orderBy: { createdAt: 'desc' } 
         },
@@ -34,14 +40,22 @@ export const PrismaRepo = {
     
     if (!patient) return {};
 
-    const { appointments, prescriptions, labOrders, clinicalNotes, documents, ...patientData } = patient;
+    const { encounters, prescriptions, labOrders, notes, documents, user, ...patientData } = patient;
     
+    // Merge user data into patient for frontend compatibility
+    const patientProfile = {
+        ...patientData,
+        name: user.name,
+        email: user.email,
+        abha: user.abhaId ? { id: user.abhaId, address: user.abhaAddress, status: user.abhaLinked ? 'LINKED' : 'PENDING' } : null
+    };
+
     return {
-      patient: patientData,
-      appointments,
+      patient: patientProfile,
+      appointments: encounters, // Map back to appointments for UI compatibility
       prescriptions,
       labs: labOrders,
-      clinicalNotes,
+      clinicalNotes: notes,
       documents
     };
   },
@@ -63,7 +77,7 @@ export const PrismaRepo = {
       data: {
         patientId: input.patientId,
         doctorId,
-        tests: input.tests,
+        tests: input.tests, // Schema expects String[], Ensure input.tests is array
         status: "ORDERED",
         priority: input.priority
       },
@@ -84,7 +98,7 @@ export const PrismaRepo = {
   async startAppointment(appointmentId) {
     return prisma.$transaction(async (tx) => {
         // 1. Fetch current state
-        const appt = await tx.appointment.findUnique({ where: { id: appointmentId } });
+        const appt = await tx.encounter.findUnique({ where: { id: appointmentId } });
         if (!appt) throw new Error("Appointment not found");
         
         // 2. Enforce Strict Transition
@@ -93,7 +107,7 @@ export const PrismaRepo = {
         }
 
         // 3. Update
-        return tx.appointment.update({
+        return tx.encounter.update({
             where: { id: appointmentId },
             data: { status: "IN_PROGRESS" },
         });
@@ -103,19 +117,20 @@ export const PrismaRepo = {
   async closeAppointment(appointmentId, summary) {
     return prisma.$transaction(async (tx) => {
       // 1. Fetch & Verify State
-      const current = await tx.appointment.findUnique({ where: { id: appointmentId }});
+      const current = await tx.encounter.findUnique({ where: { id: appointmentId }});
       if (!current) throw new Error("Appointment not found");
       
       if (current.status !== 'IN_PROGRESS') {
           throw new Error("Invalid State: Can only close IN_PROGRESS appointments.");
       }
 
-      // 2. Update Appointment
-      const appt = await tx.appointment.update({
+      // 2. Update Encounter
+      const appt = await tx.encounter.update({
         where: { id: appointmentId },
         data: { 
             status: "COMPLETED",
-            summary: JSON.stringify(summary)
+            // Note: Schema doesn't have summary field on Encounter, usually stored in Note.
+            // But we will create a summary note.
         },
       });
       
@@ -124,6 +139,7 @@ export const PrismaRepo = {
         data: {
           patientId: appt.patientId,
           doctorId: appt.doctorId,
+          encounterId: appt.id, // Link to encounter
           content: `Visit Closed. Diagnosis: ${summary.diagnosis}. Notes: ${summary.notes}`,
           shared: true,
         },
@@ -134,37 +150,56 @@ export const PrismaRepo = {
   },
 
   async getAppointments(filters = {}) {
-    const where = { deletedAt: null }; // Soft delete filter
+    const where = { deletedAt: null };
     if (filters.doctorId) where.doctorId = filters.doctorId;
     if (filters.patientId) where.patientId = filters.patientId;
 
-    return prisma.appointment.findMany({
+    // Use Encounter model
+    return prisma.encounter.findMany({
       where,
-      orderBy: { scheduledAt: 'asc' }
-    });
+      orderBy: { scheduledAt: 'asc' },
+      include: {
+          doctor: { include: { user: true } },
+          patient: { include: { user: true } }
+      }
+    }).then(encounters => encounters.map(e => ({
+        ...e,
+        // Map fields for frontend compatibility
+        doctorName: e.doctor.user.name,
+        date: e.scheduledAt.toISOString()
+    })));
   },
 
   async createAppointment(input) {
-    return prisma.appointment.create({
+    return prisma.encounter.create({
       data: {
         patientId: input.patientId,
         doctorId: input.doctorId,
         scheduledAt: new Date(`${input.date}T${input.time}:00Z`),
         status: "SCHEDULED",
-        type: input.type
+        type: input.type || 'video'
       }
     });
   },
 
   async getAppointmentById(id) {
-    return prisma.appointment.findFirst({
-      where: { id, deletedAt: null }
+    const e = await prisma.encounter.findFirst({
+      where: { id, deletedAt: null },
+      include: { doctor: { include: { user: true } } }
     });
+    
+    if (!e) return null;
+    
+    return {
+        ...e,
+        doctorName: e.doctor.user.name,
+        date: e.scheduledAt.toISOString()
+    };
   },
 
   async checkRelationship(userId, patientId) {
     const doctorId = userId === 'usr_doc_1' ? 'doc_1' : userId;
-    const count = await prisma.appointment.count({
+    const count = await prisma.encounter.count({
         where: {
             doctorId: doctorId,
             patientId: patientId,
@@ -175,20 +210,59 @@ export const PrismaRepo = {
   },
 
   async getDocumentById(id) {
-    return prisma.document.findFirst({
-      where: { id, deletedAt: null }
+    return prisma.medicalDocument.findFirst({
+      where: { id, deletedAt: null },
+      include: { aiData: true }
     });
+  },
+
+  // ABDM Helpers for Prisma Mode
+  async linkAbha(userId, abhaData) {
+      return prisma.user.update({
+          where: { id: userId },
+          data: {
+              abhaId: abhaData.id,
+              abhaAddress: abhaData.address,
+              abhaLinked: true,
+              abhaLinkedAt: new Date()
+          }
+      });
+  },
+
+  async createConsent(patientId, data) {
+      // Find user for patient
+      const patient = await prisma.patient.findUnique({ where: { id: patientId } });
+      if(!patient) throw new Error("Patient not found");
+
+      return prisma.abdmConsent.create({
+          data: {
+              patientUserId: patient.userId,
+              consentId: data.consentId || `cons_${Math.random()}`,
+              purpose: data.purpose,
+              dataScope: Array.isArray(data.dataTypes) ? data.dataTypes.join(',') : 'ALL',
+              hipName: data.hipName,
+              status: 'GRANTED'
+          }
+      });
   },
 
   // Generic Soft Delete
   async softDelete(model, id, userId) {
-      if (!prisma[model]) throw new Error("Invalid model for deletion");
+      // Map frontend model names to Prisma model names
+      const modelMap = {
+          'prescription': 'prescription',
+          'note': 'clinicalNote',
+          'document': 'medicalDocument'
+      };
       
-      return prisma[model].update({
+      const prismaModel = modelMap[model] || model;
+      
+      if (!prisma[prismaModel]) throw new Error("Invalid model for deletion");
+      
+      return prisma[prismaModel].update({
           where: { id },
           data: {
               deletedAt: new Date(),
-              // deletedBy: userId // Assuming schema has this field
           }
       });
   }
