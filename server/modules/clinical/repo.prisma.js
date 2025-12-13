@@ -24,16 +24,13 @@ export const PrismaRepo = {
     
     if (!patient) return {};
 
-    // Flatten structure to match memory repo expectations if needed
-    // The include above actually attaches them to the patient object
-    // We separate them to match the { patient, appointments, ... } signature
     const { appointments, prescriptions, labOrders, clinicalNotes, documents, ...patientData } = patient;
     
     return {
       patient: patientData,
       appointments,
       prescriptions,
-      labs: labOrders, // Mapping 'labOrders' to 'labs' key as used in memory repo
+      labs: labOrders,
       clinicalNotes,
       documents
     };
@@ -120,7 +117,7 @@ export const PrismaRepo = {
       data: {
         patientId: input.patientId,
         doctorId: input.doctorId,
-        scheduledAt: new Date(`${input.date}T${input.time}:00Z`), // Basic ISO construction
+        scheduledAt: new Date(`${input.date}T${input.time}:00Z`),
         status: "SCHEDULED",
         type: input.type
       }
@@ -134,10 +131,7 @@ export const PrismaRepo = {
   },
 
   async checkRelationship(userId, patientId) {
-    // For Mock consistency: Map 'usr_doc_1' -> 'doc_1'
     const doctorId = userId === 'usr_doc_1' ? 'doc_1' : userId;
-    
-    // Check if there is at least one appointment between them
     const count = await prisma.appointment.count({
         where: {
             doctorId: doctorId,
@@ -145,5 +139,11 @@ export const PrismaRepo = {
         }
     });
     return count > 0;
+  },
+
+  async getDocumentById(id) {
+    return prisma.document.findUnique({
+      where: { id }
+    });
   }
 };

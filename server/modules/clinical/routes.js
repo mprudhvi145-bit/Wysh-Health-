@@ -18,7 +18,6 @@ clinicalRouter.get(
   ClinicalController.searchPatients
 );
 
-// LOCKED DOWN: Doctor must own patient relation
 clinicalRouter.get(
   "/patients/:patientId/chart",
   requireRole("DOCTOR"),
@@ -28,7 +27,6 @@ clinicalRouter.get(
 );
 
 // --- Clinical Actions ---
-// LOCKED DOWN: Can only prescribe to own patients
 clinicalRouter.post(
   "/prescriptions",
   requireRole("DOCTOR"),
@@ -56,7 +54,6 @@ clinicalRouter.post(
 // --- Appointment Workflows ---
 clinicalRouter.get(
     "/appointments",
-    // Role check handled in controller/service logic as both patients and doctors can view their own
     ClinicalController.getAppointments
 );
 
@@ -98,4 +95,12 @@ clinicalRouter.get(
   requireRole("PATIENT"),
   audit("VIEW", "my_labs"),
   ClinicalController.getMyLabs
+);
+
+// --- AI Insights (Secure) ---
+clinicalRouter.get(
+  "/documents/:id/ai",
+  // No strict role check here because both can access, but service handles logic
+  audit("AI_ACCESS", "document_ai"),
+  ClinicalController.getAIInsight
 );

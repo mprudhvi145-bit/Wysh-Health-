@@ -50,7 +50,29 @@ export const mem = {
       createdAt: '2024-10-12T10:30:00Z' 
     }
   ],
-  documents: []
+  documents: [
+    {
+      id: 'doc_ai_1',
+      patientId: 'p1',
+      title: 'Lab Report - Lipid Panel',
+      type: 'Lab Report',
+      date: '2024-10-12',
+      url: '#',
+      tags: ['Blood', 'Cardio'],
+      extractedData: {
+        summary: "The lipid panel indicates elevated LDL cholesterol levels, while HDL and Triglycerides remain within normal ranges. This suggests a need for dietary review.",
+        diagnosis: ["Hyperlipidemia"],
+        medications: [],
+        labs: [
+          { test: "LDL Cholesterol", value: "145", unit: "mg/dL", flag: "High" },
+          { test: "HDL Cholesterol", value: "55", unit: "mg/dL", flag: "Normal" },
+          { test: "Triglycerides", value: "110", unit: "mg/dL", flag: "Normal" }
+        ],
+        notes: "Patient advised to reduce saturated fats.",
+        confidence: 0.94
+      }
+    }
+  ]
 };
 
 export const Repo = {
@@ -67,7 +89,7 @@ export const Repo = {
       appointments: mem.appointments.filter(a => a.patientId === patientId),
       prescriptions: mem.prescriptions.filter(p => p.patientId === patientId),
       labs: mem.labs.filter(l => l.patientId === patientId),
-      clinicalNotes: mem.notes.filter(n => n.patientId === patientId), // Mapped to clinicalNotes for frontend consistency
+      clinicalNotes: mem.notes.filter(n => n.patientId === patientId), 
       documents: mem.documents.filter(d => d.patientId === patientId),
     };
   },
@@ -113,11 +135,10 @@ export const Repo = {
     appt.status = "COMPLETED";
     appt.summary = summary;
     
-    // Automatically add a clinical note for the summary
     const note = {
       id: `note_${randomUUID()}`,
       patientId: appt.patientId,
-      doctorId: appt.doctorId, // Assuming authorized user is the doctor
+      doctorId: appt.doctorId, 
       content: `Visit Closed. Diagnosis: ${summary.diagnosis}. Notes: ${summary.notes}`,
       shared: true,
       createdAt: new Date().toISOString()
@@ -127,8 +148,6 @@ export const Repo = {
     return appt;
   },
   
-  // Helper to sync appointments from external logic (like the main index.js if needed)
-  // or to be called by Appointment Controller
   createAppointment(input) {
      const apt = { id: `apt_${randomUUID()}`, status: 'SCHEDULED', ...input };
      mem.appointments.push(apt);
@@ -149,10 +168,11 @@ export const Repo = {
   },
 
   checkRelationship(userId, patientId) {
-    // For Mock: Map 'usr_doc_1' -> 'doc_1'
     const doctorId = userId === 'usr_doc_1' ? 'doc_1' : userId;
-    
-    // Check if there is ANY appointment connecting this doctor and patient
     return mem.appointments.some(a => a.doctorId === doctorId && a.patientId === patientId);
+  },
+
+  getDocumentById(id) {
+    return mem.documents.find(d => d.id === id);
   }
 };

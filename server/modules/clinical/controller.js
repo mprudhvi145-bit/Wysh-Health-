@@ -8,14 +8,13 @@ export const ClinicalController = {
   },
 
   async getPatientChart(req, res) {
-    // Pass user role to enforce data minimization
     const data = await ClinicalService.getPatientChart(req.params.patientId, req.user.role);
     if (!data.patient) return res.status(404).json({ error: "Patient not found" });
     res.json({ data });
   },
 
   async createPrescription(req, res) {
-    const doctorId = 'doc_1'; // In real app: req.user.doctorProfileId (or mapped via service)
+    const doctorId = 'doc_1'; 
     const result = await ClinicalService.createPrescription(req.body, doctorId);
     res.status(201).json({ data: result });
   },
@@ -74,5 +73,15 @@ export const ClinicalController = {
     const data = await ClinicalService.getAppointmentById(req.params.id);
     if (!data) return res.status(404).json({error: "Appointment not found"});
     res.json({ data });
+  },
+
+  async getAIInsight(req, res) {
+      try {
+          const data = await ClinicalService.getAIInsight(req.params.id, req.user);
+          if (!data) return res.status(404).json({ error: "No AI insights available for this document" });
+          res.json({ data });
+      } catch (error) {
+          res.status(error.status || 500).json({ error: error.message || "Internal Error" });
+      }
   }
 };

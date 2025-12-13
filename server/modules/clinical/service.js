@@ -18,7 +18,6 @@ export const ClinicalService = {
     return await Repo.searchPatients(query || "");
   },
 
-  // Updated to accept userRole context
   async getPatientChart(patientId, userRole = 'doctor') {
     const data = await Repo.getPatientChart(patientId);
     return serializeChart(data, userRole);
@@ -62,7 +61,6 @@ export const ClinicalService = {
   async getPrescriptionsForPatient(userId) {
     const patientId = userId === 'usr_pat_1' ? 'p1' : userId;
     const chart = await Repo.getPatientChart(patientId);
-    // Explicit serialization for patient view
     return serializeChart(chart, 'patient').prescriptions || [];
   },
 
@@ -74,5 +72,51 @@ export const ClinicalService = {
 
   async getAppointmentById(id) {
     return await Repo.getAppointmentById(id);
+  },
+
+  // NEW: AI Insight Retrieval with Security Guards
+  async getAIInsight(documentId, user) {
+    const doc = await Repo.getDocumentById(documentId);
+    if (!doc) throw new Error("Document not found");
+
+    // Security Check: Access Control
+    if (user.role === 'patient') {
+        const patientId = user.id === 'usr_pat_1' ? 'p1' : user.id; // Mock mapping
+        if (doc.patientId !== patientId) {
+            throw { status: 403, message: "Access Denied: Not your document" };
+        }
+    } else if (user.role === 'doctor') {
+        const hasAccess = await Repo.checkRelationship(user.id, doc.patientId);
+        if (!hasAccess) {
+             throw { status: 403, message: "Access Denied: Patient not in your care" };
+        }
+    }
+
+    if (!doc.extractedData) return null;
+
+    // Serialization: Role-Specific Views
+    const aiData = doc.extractedData;
+    
+    if (user.role === 'patient') {
+        // Patient Safe View: Summary Only
+        return {
+            summary: aiData.summary,
+            highlights: [
+                ...(aiData.diagnosis || []),
+                ...(aiData.labs?.filter(l => l.flag !== 'Normal').map(l => `${l.test}: ${l.flag}`) || [])
+            ],
+            recommendations: ["Please discuss these results with your primary care physician."],
+            source: "AI-assisted Analysis",
+            generatedAt: new Date().toISOString() // Or doc creation date
+        };
+    }
+
+    // Doctor View: Full Data + Confidence + Flags
+    return {
+        ...aiData,
+        source: "AI-Clinical Engine (Gemini 2.5)",
+        redFlags: aiData.labs?.filter(l => l.flag === 'High' || l.flag === 'Critical') || [],
+        rawConfidence: aiData.confidence
+    };
   }
 };

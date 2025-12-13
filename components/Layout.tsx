@@ -35,8 +35,9 @@ const Navbar: React.FC = () => {
         { label: 'Dashboard', path: '/dashboard' },
         { label: 'Appointments', path: '/appointments' },
         { label: 'Records', path: '/dashboard/records' },
+        { label: 'AI Insights', path: '/dashboard/insights' }, // Added
         { label: 'Find Doctor', path: '/doctors' },
-        { label: 'AI Health', path: '/ai-health' },
+        { label: 'Biometrics', path: '/ai-health' }, // Renamed from AI Health to avoid confusion
       ];
     }
 

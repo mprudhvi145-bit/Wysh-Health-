@@ -24,6 +24,7 @@ import { ProfilePage } from './features/profile/ProfilePage';
 import { PatientPrescriptions } from './features/patient/pages/PatientPrescriptions';
 import { PatientLabs } from './features/patient/pages/PatientLabs';
 import { AppointmentSummary } from './features/patient/pages/AppointmentSummary';
+import { AIInsights } from './features/patient/pages/AIInsights';
 
 // Placeholder for Products page
 const Products = () => (
@@ -71,6 +72,12 @@ const App: React.FC = () => {
                 <Route path="/dashboard/records" element={
                     <ProtectedRoute>
                         <HealthRecords />
+                    </ProtectedRoute>
+                } />
+                
+                <Route path="/dashboard/insights" element={
+                    <ProtectedRoute>
+                        <AIInsights />
                     </ProtectedRoute>
                 } />
 
