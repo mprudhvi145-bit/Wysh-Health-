@@ -7,6 +7,14 @@ import { Investor } from './pages/Investor';
 import { Contact } from './pages/Contact';
 import { Team } from './pages/Team';
 import { AIHealthDash } from './pages/AIHealthDash';
+import { AuthProvider } from './context/AuthContext';
+import { Login } from './pages/Auth/Login';
+import { Signup } from './pages/Auth/Signup';
+import { ProtectedRoute } from './components/Auth/ProtectedRoute';
+import { DoctorDirectory } from './features/doctors/pages/DoctorDirectory';
+import { DoctorProfile } from './features/doctors/pages/DoctorProfile';
+import { BookingPage } from './features/appointments/pages/BookingPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Placeholder for Products page
 const Products = () => (
@@ -20,20 +28,47 @@ const Products = () => (
 
 const App: React.FC = () => {
   return (
-    <Router>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/investors" element={<Investor />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/team" element={<Team />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/ai-health" element={<AIHealthDash />} />
-          <Route path="/ecosystem" element={<Navigate to="/" />} />
-        </Routes>
-      </Layout>
-    </Router>
+    <ErrorBoundary>
+        <AuthProvider>
+        <Router>
+            <Layout>
+            <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/investors" element={<Investor />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/team" element={<Team />} />
+                <Route path="/products" element={<Products />} />
+                
+                {/* Doctors */}
+                <Route path="/doctors" element={<DoctorDirectory />} />
+                <Route path="/doctors/:id" element={<DoctorProfile />} />
+                <Route path="/book/:doctorId" element={
+                <ProtectedRoute>
+                    <BookingPage />
+                </ProtectedRoute>
+                } />
+                
+                {/* Protected Routes */}
+                <Route path="/dashboard" element={
+                <ProtectedRoute>
+                    <Dashboard />
+                </ProtectedRoute>
+                } />
+                <Route path="/ai-health" element={
+                <ProtectedRoute>
+                    <AIHealthDash />
+                </ProtectedRoute>
+                } />
+                
+                <Route path="/ecosystem" element={<Navigate to="/" />} />
+            </Routes>
+            </Layout>
+        </Router>
+        </AuthProvider>
+    </ErrorBoundary>
   );
 };
 

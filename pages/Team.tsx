@@ -1,6 +1,7 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { GlassCard } from '../components/UI';
-import { TEAM } from '../constants';
+import { TEAM } from '../utils/constants';
 import { Linkedin } from 'lucide-react';
 
 export const Team: React.FC = () => {

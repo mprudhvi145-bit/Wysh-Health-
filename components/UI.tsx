@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Check, Loader2 } from 'lucide-react';
 
 export const GlassCard: React.FC<{ 
   children: React.ReactNode; 
@@ -29,7 +29,7 @@ export const GlassCard: React.FC<{
 };
 
 export const Button: React.FC<{ 
-  children: React.ReactNode; 
+  children?: React.ReactNode; 
   variant?: 'primary' | 'secondary' | 'outline'; 
   onClick?: () => void;
   className?: string;
@@ -80,6 +80,44 @@ export const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (pro
   />
 );
 
+export const Checkbox: React.FC<{
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: React.ReactNode;
+  id?: string;
+}> = ({ checked, onChange, label, id }) => {
+  return (
+    <label htmlFor={id} className="flex items-start gap-3 cursor-pointer group select-none">
+      <div className={`
+        w-5 h-5 rounded border flex items-center justify-center transition-all mt-0.5 flex-shrink-0
+        ${checked 
+          ? 'bg-teal border-teal text-white' 
+          : 'bg-white/5 border-white/20 group-hover:border-teal/50'
+        }
+      `}>
+        {checked && <Check size={14} strokeWidth={3} />}
+        <input 
+          id={id}
+          type="checkbox" 
+          className="hidden" 
+          checked={checked} 
+          onChange={(e) => onChange(e.target.checked)} 
+        />
+      </div>
+      <div className="text-sm text-text-secondary group-hover:text-white transition-colors">
+        {label}
+      </div>
+    </label>
+  );
+};
+
+export const Loader: React.FC<{ text?: string }> = ({ text = "Loading..." }) => (
+  <div className="flex flex-col items-center justify-center p-8 text-teal">
+    <Loader2 className="w-8 h-8 animate-spin mb-3" />
+    <span className="text-sm font-medium animate-pulse">{text}</span>
+  </div>
+);
+
 export const Modal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -88,9 +126,9 @@ export const Modal: React.FC<{
 }> = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <GlassCard className="w-full max-w-2xl relative z-10 max-h-[90vh] overflow-y-auto bg-surgical border border-white/10 shadow-2xl">
+      <GlassCard className="w-full max-w-2xl relative z-10 max-h-[90vh] overflow-y-auto bg-surgical border border-white/10 shadow-2xl animate-scaleIn">
         <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
           <h2 className="text-xl font-display font-bold text-white">{title}</h2>
           <button onClick={onClose} className="text-text-secondary hover:text-white transition-colors">

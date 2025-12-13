@@ -1,19 +1,29 @@
+
 import React, { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { Menu, X, Activity, Globe, ChevronRight } from 'lucide-react';
-import { NAV_ITEMS } from '../constants';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Menu, X, Activity, User, LogOut, ChevronDown } from 'lucide-react';
+import { NAV_ITEMS } from '../utils/constants';
 import { NeuralGrid } from './3DVisuals';
+import { useAuth } from '../context/AuthContext';
+import { Button } from './UI';
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const location = useLocation();
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+    setIsOpen(false);
+  };
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-surgical/90 backdrop-blur-lg border-b border-white/5' : 'bg-transparent'}`}>
@@ -38,11 +48,41 @@ const Navbar: React.FC = () => {
               {item.label}
             </NavLink>
           ))}
-          <NavLink to="/contact">
-            <button className="px-5 py-2 rounded-full border border-teal text-teal hover:bg-teal hover:text-white transition-all text-sm font-medium">
-              Book Demo
-            </button>
-          </NavLink>
+          
+          {isAuthenticated ? (
+             <div className="flex items-center gap-4 border-l border-white/10 pl-6">
+                <div className="flex items-center gap-3 group cursor-pointer relative">
+                    <div className="text-right hidden lg:block">
+                        <p className="text-white text-sm font-bold leading-none">{user?.name}</p>
+                        <p className="text-text-secondary text-xs uppercase tracking-wider">{user?.role}</p>
+                    </div>
+                    <div className="w-9 h-9 rounded-full bg-teal/20 border border-teal text-teal flex items-center justify-center">
+                        {user?.avatar ? (
+                             <img src={user.avatar} alt="User" className="w-full h-full rounded-full object-cover" />
+                        ) : (
+                             <span className="font-bold">{user?.name.charAt(0)}</span>
+                        )}
+                    </div>
+                    
+                    {/* Simple Logout Dropdown for Demo */}
+                    <button 
+                        onClick={handleLogout}
+                        className="absolute top-10 right-0 w-32 bg-surgical border border-white/10 rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto"
+                    >
+                        <div className="flex items-center gap-2 text-red-400 text-sm hover:bg-white/5 p-2 rounded">
+                            <LogOut size={14} /> Logout
+                        </div>
+                    </button>
+                </div>
+             </div>
+          ) : (
+            <div className="flex items-center gap-4 border-l border-white/10 pl-6">
+                <NavLink to="/login" className="text-text-secondary hover:text-white text-sm font-medium">Log In</NavLink>
+                <NavLink to="/signup">
+                    <Button variant="primary" className="!py-2 !px-4 !text-sm">Get Started</Button>
+                </NavLink>
+            </div>
+          )}
         </div>
 
         {/* Mobile Toggle */}
@@ -53,7 +93,7 @@ const Navbar: React.FC = () => {
 
       {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden absolute top-20 left-0 right-0 bg-surgical border-b border-white/10 p-6 flex flex-col gap-4 animate-slideDown">
+        <div className="md:hidden absolute top-20 left-0 right-0 bg-surgical border-b border-white/10 p-6 flex flex-col gap-4 animate-slideDown shadow-2xl">
           {NAV_ITEMS.map((item) => (
             <NavLink 
               key={item.path} 
@@ -64,6 +104,34 @@ const Navbar: React.FC = () => {
               {item.label}
             </NavLink>
           ))}
+          
+          <div className="pt-4 flex flex-col gap-3">
+              {isAuthenticated ? (
+                  <>
+                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
+                        <div className="w-8 h-8 rounded-full bg-teal/20 border border-teal flex items-center justify-center text-teal">
+                             {user?.name.charAt(0)}
+                        </div>
+                        <div>
+                             <p className="text-white font-bold">{user?.name}</p>
+                             <p className="text-xs text-text-secondary uppercase">{user?.role}</p>
+                        </div>
+                    </div>
+                    <Button variant="outline" onClick={handleLogout} icon={<LogOut size={16}/>} className="justify-center">
+                        Logout
+                    </Button>
+                  </>
+              ) : (
+                  <>
+                    <NavLink to="/login" onClick={() => setIsOpen(false)}>
+                        <Button variant="outline" className="w-full justify-center">Log In</Button>
+                    </NavLink>
+                    <NavLink to="/signup" onClick={() => setIsOpen(false)}>
+                        <Button variant="primary" className="w-full justify-center">Get Started</Button>
+                    </NavLink>
+                  </>
+              )}
+          </div>
         </div>
       )}
     </nav>
