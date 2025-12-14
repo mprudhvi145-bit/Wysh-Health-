@@ -3,11 +3,14 @@ import { prisma } from '../../lib/prisma.js';
 
 export const ConsentService = {
   async requestConsent(doctorId, patientId, scope, reason) {
-    // Verify doctor and patient exist
-    const doctor = await prisma.doctor.findUnique({ where: { userId: doctorId } });
+    // 1. Verify doctor
+    const doctor = await prisma.doctor.findUnique({ 
+        where: { userId: doctorId } 
+    });
     if (!doctor) throw new Error("Doctor profile not found");
 
-    return prisma.consentRequest.create({
+    // 2. Create Consent Record
+    return prisma.consent.create({
       data: {
         doctorId: doctor.id,
         patientId: patientId,
@@ -19,47 +22,61 @@ export const ConsentService = {
   },
 
   async approveConsent(patientUserId, requestId) {
-    const patient = await prisma.patient.findUnique({ where: { userId: patientUserId } });
+    // 1. Verify Patient
+    const patient = await prisma.patient.findUnique({ 
+        where: { userId: patientUserId } 
+    });
     if (!patient) throw new Error("Patient profile not found");
 
-    const request = await prisma.consentRequest.findUnique({ where: { id: requestId } });
+    // 2. Verify Request
+    const request = await prisma.consent.findUnique({ where: { id: requestId } });
     if (!request) throw new Error("Request not found");
     if (request.patientId !== patient.id) throw new Error("Unauthorized");
 
-    return prisma.consentRequest.update({
+    // 3. Update
+    return prisma.consent.update({
       where: { id: requestId },
-      data: { status: "APPROVED" }
-    });
-  },
-
-  async rejectConsent(patientUserId, requestId) {
-    const patient = await prisma.patient.findUnique({ where: { userId: patientUserId } });
-    if (!patient) throw new Error("Patient profile not found");
-
-    const request = await prisma.consentRequest.findUnique({ where: { id: requestId } });
-    if (request.patientId !== patient.id) throw new Error("Unauthorized");
-
-    return prisma.consentRequest.update({
-      where: { id: requestId },
-      data: { status: "REJECTED" }
+      data: { status: "APPROVED", grantedAt: new Date() }
     });
   },
 
   async getActiveConsents(userId, role) {
     if (role === 'patient') {
       const patient = await prisma.patient.findUnique({ where: { userId } });
-      return prisma.consentRequest.findMany({
+      const consents = await prisma.consent.findMany({
         where: { patientId: patient.id },
-        include: { doctor: { include: { user: true } } },
         orderBy: { createdAt: 'desc' }
       });
+      
+      // Manual Join for Doctor details (Since we flattened relations in schema for safety)
+      const enriched = await Promise.all(consents.map(async (c) => {
+          if (c.doctorId) {
+              const doctor = await prisma.doctor.findUnique({
+                  where: { id: c.doctorId },
+                  include: { user: { select: { name: true, avatar: true } } }
+              });
+              return { ...c, doctor };
+          }
+          return c;
+      }));
+      return enriched;
+
     } else if (role === 'doctor') {
       const doctor = await prisma.doctor.findUnique({ where: { userId } });
-      return prisma.consentRequest.findMany({
+      const consents = await prisma.consent.findMany({
         where: { doctorId: doctor.id },
-        include: { patient: { include: { user: true } } },
         orderBy: { createdAt: 'desc' }
       });
+
+      // Manual Join for Patient details
+      const enriched = await Promise.all(consents.map(async (c) => {
+          const patient = await prisma.patient.findUnique({
+              where: { id: c.patientId },
+              include: { user: { select: { name: true } } }
+          });
+          return { ...c, patient };
+      }));
+      return enriched;
     }
     return [];
   }
