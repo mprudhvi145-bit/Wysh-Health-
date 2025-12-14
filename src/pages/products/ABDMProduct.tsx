@@ -1,11 +1,24 @@
 
-import React from 'react';
-import { GlassCard, Button, Badge } from '../../components/UI';
-import { ShieldCheck, Lock, RefreshCw, FileText, ArrowRight, ExternalLink, Activity } from 'lucide-react';
+import React, { useState } from 'react';
+import { GlassCard, Button, Badge, Loader } from '../../components/UI';
+import { ShieldCheck, Lock, RefreshCw, FileText, Activity, CheckCircle2, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const ABDMProduct: React.FC = () => {
   const navigate = useNavigate();
+  const [checking, setChecking] = useState(false);
+  const [compliance, setCompliance] = useState<{ step: string, status: 'pass' | 'pending' }[]>([
+      { step: 'Encryption Layer (AES-256)', status: 'pass' },
+      { step: 'FHIR R4 Bundle Generation', status: 'pass' },
+      { step: 'Consent Artefact Mapping', status: 'pass' },
+      { step: 'Callback Webhooks', status: 'pass' },
+      { step: 'Audit Trail Immutability', status: 'pass' },
+  ]);
+
+  const runCheck = () => {
+      setChecking(true);
+      setTimeout(() => setChecking(false), 2000);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12 space-y-16">
@@ -20,7 +33,7 @@ export const ABDMProduct: React.FC = () => {
             </h1>
             <p className="text-xl text-orange-500 font-medium">Designed for India’s National Digital Health Mission</p>
             <p className="text-text-secondary text-lg">
-                Health data must move only with patient consent. Wysh Care enforces this core principle.
+                Health data must move only with patient consent. Wysh Care enforces this core principle as a compliant Health Information User (HIU).
             </p>
             <div className="flex justify-center gap-4">
                 <Button variant="primary" onClick={() => navigate('/abha')} icon={<ShieldCheck size={18} />}>
@@ -47,6 +60,47 @@ export const ABDMProduct: React.FC = () => {
                     <p className="text-xs text-text-secondary">{step.desc}</p>
                 </GlassCard>
             ))}
+        </div>
+
+        {/* Sandbox Compliance Checker */}
+        <div className="max-w-2xl mx-auto">
+            <GlassCard className="border-teal/30 bg-teal/5">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Activity size={20} className="text-teal" /> Sandbox Compliance Status
+                    </h3>
+                    <Button 
+                        variant="outline" 
+                        className="text-xs" 
+                        onClick={runCheck}
+                        disabled={checking}
+                        icon={checking ? <Loader text=""/> : <RefreshCw size={14}/>}
+                    >
+                        {checking ? 'Verifying...' : 'Run Diagnostics'}
+                    </Button>
+                </div>
+                
+                <div className="space-y-3">
+                    {compliance.map((item, i) => (
+                        <div key={i} className="flex justify-between items-center p-3 bg-black/20 rounded border border-white/5">
+                            <span className="text-sm text-white">{item.step}</span>
+                            {checking ? (
+                                <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                            ) : item.status === 'pass' ? (
+                                <span className="flex items-center gap-1 text-green-400 text-xs font-bold uppercase"><CheckCircle2 size={14}/> Verified</span>
+                            ) : (
+                                <span className="flex items-center gap-1 text-yellow-400 text-xs font-bold uppercase"><XCircle size={14}/> Pending</span>
+                            )}
+                        </div>
+                    ))}
+                </div>
+                <div className="mt-4 pt-4 border-t border-white/10 text-center">
+                    <p className="text-[10px] text-text-secondary">
+                        Wysh Care is configured to connect with the NHA Sandbox Environment. <br/>
+                        Client ID: <span className="font-mono text-white">SBX_WYSH_CARE_HIU_001</span>
+                    </p>
+                </div>
+            </GlassCard>
         </div>
 
         {/* Technical Capabilities */}

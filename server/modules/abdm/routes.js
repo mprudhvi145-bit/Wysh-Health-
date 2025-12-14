@@ -1,36 +1,29 @@
+
 import { Router } from "express";
 import { AbdmController } from "./controller.js";
+import { AbdmCallbackController } from "./callbacks.js";
 import { authRequired } from "../../middleware/auth.js";
 import { audit } from "../../middleware/audit.js";
 
 export const abdmRouter = Router();
 
+// --- Internal App Routes (Secured) ---
 abdmRouter.use(authRequired);
 
-abdmRouter.post(
-    "/link/otp", 
-    AbdmController.requestOtp
-);
+abdmRouter.post("/link/otp", AbdmController.requestOtp);
+abdmRouter.post("/link/confirm", audit("ABHA_LINK", "identity"), AbdmController.linkAbha);
+abdmRouter.get("/consents", AbdmController.getConsents);
+abdmRouter.post("/consents", audit("CONSENT_GRANT", "abdm_consent"), AbdmController.createConsent);
+abdmRouter.post("/fetch", audit("DATA_FETCH", "external_records"), AbdmController.fetchExternalData);
 
-abdmRouter.post(
-    "/link/confirm", 
-    audit("ABHA_LINK", "identity"),
-    AbdmController.linkAbha
-);
+// --- Gateway Callback Routes (Public/Webhook) ---
+// These mimic the structure ABDM Gateway sends.
+// In prod, secure these via Signature Verification middleware.
+const webhookRouter = Router();
 
-abdmRouter.get(
-    "/consents",
-    AbdmController.getConsents
-);
+webhookRouter.post("/v0.5/consent/on-init", AbdmCallbackController.onConsentInit);
+webhookRouter.post("/v0.5/consents/hip/notify", AbdmCallbackController.onConsentNotify);
+webhookRouter.post("/v0.5/health-information/hip/request", AbdmCallbackController.onHealthInformationRequest);
 
-abdmRouter.post(
-    "/consents",
-    audit("CONSENT_GRANT", "abdm_consent"),
-    AbdmController.createConsent
-);
-
-abdmRouter.post(
-    "/fetch",
-    audit("DATA_FETCH", "external_records"),
-    AbdmController.fetchExternalData
-);
+// Mount webhooks separately if needed, or nest here for simplicity in this monolith
+abdmRouter.use("/callbacks", webhookRouter); 
