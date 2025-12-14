@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Users, Calendar, Activity, Clock, Video, Power, ClipboardList } from 'lucide-react';
+import { Users, Calendar, Activity, Clock, Video, Power, ClipboardList, Sparkles, ChevronRight } from 'lucide-react';
 import { GlassCard, Button, Badge } from '../../components/UI';
 import { Appointment } from '../../types/appointment';
 import { useNavigate } from 'react-router-dom';
@@ -21,10 +21,26 @@ export const DoctorDashboardView: React.FC<DoctorDashboardViewProps> = ({
   patientCount
 }) => {
   const navigate = useNavigate();
-  const todayAppointments = appointments; // In real app, filter for today
+  const todayAppointments = appointments; 
 
   return (
     <div className="space-y-6">
+        {/* Subscription Banner (Upsell) */}
+        <div className="bg-gradient-to-r from-purple/10 via-purple/5 to-transparent border border-purple/20 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple/20 rounded-lg text-purple">
+                    <Sparkles size={20} />
+                </div>
+                <div>
+                    <h4 className="text-white font-bold text-sm">Free Tier Active</h4>
+                    <p className="text-xs text-text-secondary">Upgrade to <span className="text-white">Clinical Pro</span> to unlock AI Scribe & Telemedicine recording.</p>
+                </div>
+            </div>
+            <Button variant="primary" className="text-xs h-8 bg-purple hover:bg-purple-dark border-purple" onClick={() => navigate('/pricing')}>
+                Upgrade Plan <ChevronRight size={12} className="ml-1"/>
+            </Button>
+        </div>
+
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
@@ -73,7 +89,8 @@ export const DoctorDashboardView: React.FC<DoctorDashboardViewProps> = ({
                      <p className="text-xs text-text-secondary uppercase">Satisfaction</p>
                  </div>
              </GlassCard>
-             <GlassCard className="py-4 flex items-center gap-4">
+             <GlassCard className="py-4 flex items-center gap-4 relative overflow-hidden">
+                 <div className="absolute top-2 right-2 opacity-50"><Badge color="purple">PRO</Badge></div>
                  <div className="p-3 bg-yellow-500/10 rounded-lg text-yellow-400"><Clock size={20} /></div>
                  <div>
                      <h3 className="text-2xl font-bold text-white">4h 30m</h3>
@@ -158,7 +175,6 @@ export const DoctorDashboardView: React.FC<DoctorDashboardViewProps> = ({
                     <Badge color="purple">Active List</Badge>
                 </div>
                 
-                {/* Visual placeholder since we don't pass the full mock list here to keep props clean */}
                 <div className="text-center py-8 text-text-secondary">
                     <p className="text-sm mb-4">Access full roster in Clinical Console</p>
                     <Button 
