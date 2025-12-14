@@ -6,7 +6,7 @@ import { GlassCard, Button, Checkbox, Loader, Badge } from '../../../../componen
 import { StickyNote, Save, Lock, Share2, Layout, FileText } from 'lucide-react';
 
 const NotesTab: React.FC = () => {
-  const { clinicalNotes, patient, refresh } = useClinical();
+  const { clinicalNotes, soapNotes, patient, refresh } = useClinical();
   
   // Mode State
   const [mode, setMode] = useState<'simple' | 'soap'>('soap');
@@ -20,21 +20,18 @@ const NotesTab: React.FC = () => {
   const save = async () => {
     if (!patient) return;
     
-    // Construct final content based on mode
-    let finalContent = content;
-    if (mode === 'soap') {
-        finalContent = `SUBJECTIVE:\n${soap.s}\n\nOBJECTIVE:\n${soap.o}\n\nASSESSMENT:\n${soap.a}\n\nPLAN:\n${soap.p}`;
-    }
-
-    if (!finalContent.trim()) return;
-
     setSaving(true);
     try {
       await clinicalService.addNote({ 
         patientId: patient.id, 
-        content: finalContent, 
+        content: mode === 'simple' ? content : 'SOAP Entry', 
         subject: mode === 'soap' ? 'SOAP Encounter Note' : 'General Clinical Note',
-        type: mode === 'soap' ? 'SOAP' : 'General',
+        type: mode === 'soap' ? 'SOAP' : 'GENERAL',
+        // Pass structured data if SOAP
+        subjective: mode === 'soap' ? soap.s : undefined,
+        objective: mode === 'soap' ? soap.o : undefined,
+        assessment: mode === 'soap' ? soap.a : undefined,
+        plan: mode === 'soap' ? soap.p : undefined,
         shared 
       });
       
@@ -150,14 +147,52 @@ const NotesTab: React.FC = () => {
         </div>
       </GlassCard>
 
-      {/* Notes Stream */}
+      {/* Notes Stream - Merged View of Simple & SOAP */}
       <div className="space-y-4">
          <h4 className="text-text-secondary text-sm font-bold uppercase tracking-wider">Clinical Timeline</h4>
-         {clinicalNotes.length === 0 && (
+         {clinicalNotes.length === 0 && soapNotes?.length === 0 && (
            <div className="text-center py-8 text-text-secondary border border-dashed border-white/10 rounded-xl">
              No notes recorded.
            </div>
          )}
+         
+         {/* Render SOAP Notes */}
+         {soapNotes?.map((note: any) => (
+            <div key={note.id} className="p-5 rounded-xl bg-purple/5 border border-purple/20 hover:border-purple/40 transition-all group">
+               <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                     <div className="w-8 h-8 rounded-full bg-purple/20 flex items-center justify-center text-purple text-xs font-bold">
+                        DR
+                     </div>
+                     <div>
+                         <p className="text-white font-bold text-sm">Dr. User</p>
+                         <p className="text-[10px] text-text-secondary">{new Date(note.createdAt).toLocaleString()}</p>
+                     </div>
+                  </div>
+                  <Badge color="purple">SOAP</Badge>
+               </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-2">
+                   <div className="bg-black/20 p-2 rounded">
+                       <span className="text-[10px] text-teal font-bold block mb-1">SUBJECTIVE</span>
+                       <p className="text-text-secondary">{note.subjective}</p>
+                   </div>
+                   <div className="bg-black/20 p-2 rounded">
+                       <span className="text-[10px] text-teal font-bold block mb-1">OBJECTIVE</span>
+                       <p className="text-text-secondary">{note.objective}</p>
+                   </div>
+                   <div className="bg-black/20 p-2 rounded">
+                       <span className="text-[10px] text-teal font-bold block mb-1">ASSESSMENT</span>
+                       <p className="text-text-secondary">{note.assessment}</p>
+                   </div>
+                   <div className="bg-black/20 p-2 rounded">
+                       <span className="text-[10px] text-teal font-bold block mb-1">PLAN</span>
+                       <p className="text-text-secondary">{note.plan}</p>
+                   </div>
+               </div>
+            </div>
+         ))}
+
+         {/* Render Legacy/Simple Notes */}
          {clinicalNotes.map((note: any) => (
            <div key={note.id} className="p-5 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all group">
               <div className="flex justify-between items-start mb-3">
@@ -170,16 +205,13 @@ const NotesTab: React.FC = () => {
                         <p className="text-[10px] text-text-secondary">{new Date(note.createdAt).toLocaleString()}</p>
                     </div>
                  </div>
-                 <div className="flex gap-2">
-                    {note.type === 'SOAP' && <Badge color="purple">SOAP</Badge>}
-                    {note.shared ? (
-                        <span className="px-2 py-1 rounded bg-teal/10 text-teal text-[10px] border border-teal/20">Shared</span>
-                    ) : (
-                        <span className="px-2 py-1 rounded bg-black/30 text-text-secondary text-[10px] border border-white/5 flex items-center gap-1">
-                            <Lock size={10} /> Private
-                        </span>
-                    )}
-                 </div>
+                 {note.shared ? (
+                    <span className="px-2 py-1 rounded bg-teal/10 text-teal text-[10px] border border-teal/20">Shared</span>
+                 ) : (
+                    <span className="px-2 py-1 rounded bg-black/30 text-text-secondary text-[10px] border border-white/5 flex items-center gap-1">
+                        <Lock size={10} /> Private
+                    </span>
+                 )}
               </div>
               <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap pl-10 border-l-2 border-white/5 group-hover:border-teal/30 transition-colors font-mono">
                   {note.content}

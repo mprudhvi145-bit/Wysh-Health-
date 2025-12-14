@@ -21,6 +21,11 @@ export interface CreateNotePayload {
   subject?: string;
   type?: string;
   shared?: boolean;
+  // SOAP fields
+  subjective?: string;
+  objective?: string;
+  assessment?: string;
+  plan?: string;
 }
 
 export interface CloseAppointmentPayload {
@@ -29,7 +34,7 @@ export interface CloseAppointmentPayload {
   followUp?: string;
 }
 
-// Mock Data
+// Mock Data ... (kept for fallback)
 const MOCK_CATALOGS = {
   medications: [
     { id: 'med_1', name: 'Metoprolol', strength: '50mg', form: 'Tablet', isGeneric: true },
@@ -66,6 +71,7 @@ const MOCK_PATIENT_CHART = {
     prescriptions: [],
     labOrders: [],
     clinicalNotes: [],
+    soapNotes: [],
     documents: []
 };
 
