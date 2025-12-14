@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Play, X, ArrowRight, User, Stethoscope, Activity, ShieldCheck, Database, Layout } from 'lucide-react';
+import { Play, X, ArrowRight, User, Stethoscope, Activity, ShieldCheck, Database, Layout, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
@@ -8,8 +8,12 @@ import { useNotification } from '../context/NotificationContext';
 export const DemoGuide: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
-  const { switchRole } = useAuth();
+  const { switchRole, user } = useAuth();
   const { addNotification } = useNotification();
+
+  const handleReset = () => {
+      window.location.reload();
+  };
 
   const steps = [
     {
@@ -83,7 +87,7 @@ export const DemoGuide: React.FC = () => {
       {!isOpen && (
         <button 
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-3 bg-gradient-to-r from-teal to-purple text-white px-4 py-3 rounded-full shadow-[0_0_20px_rgba(77,139,131,0.5)] hover:scale-105 transition-all animate-float"
+          className="flex items-center gap-3 bg-gradient-to-r from-teal to-purple text-white px-4 py-3 rounded-full shadow-[0_0_20px_rgba(77,139,131,0.5)] hover:scale-105 transition-all animate-float border border-white/10"
         >
           <Play fill="currentColor" size={16} />
           <span className="font-bold tracking-wide text-sm">Run Demo</span>
@@ -91,15 +95,20 @@ export const DemoGuide: React.FC = () => {
       )}
 
       {isOpen && (
-        <div className="bg-[#0D0F12] border border-white/10 rounded-2xl shadow-2xl w-80 overflow-hidden animate-scaleIn relative">
+        <div className="bg-[#0D0F12] border border-white/10 rounded-2xl shadow-2xl w-80 overflow-hidden animate-scaleIn relative backdrop-blur-xl">
           <div className="bg-gradient-to-r from-teal/20 to-purple/20 p-4 flex justify-between items-center border-b border-white/10">
             <div>
                <h3 className="text-white font-bold text-sm">Official Product Demo</h3>
-               <p className="text-[10px] text-teal-glow uppercase tracking-wider font-bold">Live Script Mode</p>
+               <p className="text-[10px] text-teal-glow uppercase tracking-wider font-bold">Script Mode: {user?.role || 'Guest'}</p>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-white/50 hover:text-white transition-colors">
-              <X size={18} />
-            </button>
+            <div className="flex items-center gap-1">
+                <button onClick={handleReset} className="p-1.5 text-white/50 hover:text-white transition-colors rounded hover:bg-white/10" title="Reset Demo Data">
+                    <RotateCcw size={14} />
+                </button>
+                <button onClick={() => setIsOpen(false)} className="p-1.5 text-white/50 hover:text-white transition-colors rounded hover:bg-white/10">
+                    <X size={18} />
+                </button>
+            </div>
           </div>
           
           <div className="p-2 space-y-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
@@ -107,9 +116,12 @@ export const DemoGuide: React.FC = () => {
               <button
                 key={step.id}
                 onClick={step.action}
-                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-all group text-left"
+                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-all group text-left border border-transparent hover:border-white/5"
               >
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-text-secondary group-hover:bg-teal/20 group-hover:text-teal transition-colors flex-shrink-0 border border-white/5">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white border transition-colors flex-shrink-0
+                    ${step.id === 1 ? 'bg-blue-500/20 border-blue-500/30' : 
+                      step.id % 2 === 0 ? 'bg-teal/20 border-teal/30' : 'bg-purple/20 border-purple/30'}
+                `}>
                   {step.icon}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -123,8 +135,8 @@ export const DemoGuide: React.FC = () => {
             ))}
           </div>
           
-          <div className="p-3 bg-white/5 border-t border-white/5 text-[10px] text-center text-text-secondary">
-             Simulated Envt • Data Reset on Refresh
+          <div className="p-3 bg-white/5 border-t border-white/5 text-[10px] text-center text-text-secondary flex justify-center items-center gap-2">
+             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"/> System Online
           </div>
         </div>
       )}
