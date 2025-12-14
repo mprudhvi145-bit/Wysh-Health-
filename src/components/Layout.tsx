@@ -8,6 +8,8 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from './UI';
 import { NotificationProvider } from '../context/NotificationContext';
 import { DemoGuide } from './DemoGuide';
+import { PilotBanner } from './PilotBanner';
+import { features } from '../utils/featureFlags';
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -36,9 +38,9 @@ const Navbar: React.FC = () => {
         { label: 'Dashboard', path: '/dashboard' },
         { label: 'Appointments', path: '/appointments' },
         { label: 'Records', path: '/dashboard/records' },
-        { label: 'AI Insights', path: '/dashboard/insights' }, // Added
+        { label: 'AI Insights', path: '/dashboard/insights' }, 
         { label: 'Find Doctor', path: '/doctors' },
-        { label: 'Biometrics', path: '/ai-health' }, // Renamed from AI Health to avoid confusion
+        { label: 'Biometrics', path: '/ai-health' },
       ];
     }
 
@@ -57,7 +59,7 @@ const Navbar: React.FC = () => {
   const navLinks = getNavItems();
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-surgical/90 backdrop-blur-lg border-b border-white/5' : 'bg-transparent'}`}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-surgical/90 backdrop-blur-lg border-b border-white/5' : 'bg-transparent'} ${features.pilotMode ? 'top-[40px]' : 'top-0'}`}>
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <NavLink to="/" className="flex items-center gap-3 group">
           <div className="w-10 h-10 bg-gradient-to-br from-teal to-purple rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-teal/50 transition-shadow">
@@ -186,12 +188,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     <div className="min-h-screen relative flex flex-col">
       <NeuralGrid />
       <NotificationProvider>
+        {features.pilotMode && <PilotBanner />}
         <Navbar />
-        <main className="flex-grow pt-20 relative z-10">
+        <main className={`flex-grow relative z-10 ${features.pilotMode ? 'pt-[120px]' : 'pt-20'}`}>
           {children}
         </main>
-        {/* Demo Guide is injected here for global availability */}
-        <DemoGuide />
+        {features.mockMode && <DemoGuide />}
       </NotificationProvider>
       <footer className="bg-surgical-light border-t border-white/5 py-12 relative z-10">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">

@@ -18,6 +18,15 @@ export const EmergencyAccess: React.FC = () => {
             <p className="text-text-secondary">Information accessible to paramedics via your Wysh ID QR code.</p>
         </div>
 
+        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-center">
+            <p className="text-red-300 text-sm font-bold">
+                ⚠️ PUBLIC ACCESS WARNING
+            </p>
+            <p className="text-red-200/70 text-xs mt-1 max-w-2xl mx-auto">
+                By enabling this profile, you consent to allow any person scanning your QR code to view your Blood Group, Allergies, and Emergency Contacts without authentication. This is designed for unconscious/critical states. Do not include sensitive private data here.
+            </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <GlassCard variant="emergency" className="flex flex-col items-center justify-center text-center p-8 bg-red-900/10 border-red-500/50">
                 <div className="bg-white p-4 rounded-xl mb-6 shadow-2xl">

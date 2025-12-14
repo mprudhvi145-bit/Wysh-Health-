@@ -43,7 +43,10 @@ export const AIInsights: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
                  <Button variant="outline" className="text-xs !py-1 !px-2 mb-2" onClick={() => navigate('/dashboard')} icon={<ArrowLeft size={12}/>}>Dashboard</Button>
-                 <h1 className="text-3xl font-display font-bold text-white">Health Intelligence</h1>
+                 <div className="flex items-center gap-3">
+                    <h1 className="text-3xl font-display font-bold text-white">Health Intelligence</h1>
+                    <Badge color="purple">BETA</Badge>
+                 </div>
                  <p className="text-text-secondary text-sm">Powered by Wysh AI Engine v2.5</p>
             </div>
             <div className="flex items-center gap-4">
