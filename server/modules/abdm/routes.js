@@ -18,12 +18,13 @@ abdmRouter.post("/fetch", audit("DATA_FETCH", "external_records"), AbdmControlle
 
 // --- Gateway Callback Routes (Public/Webhook) ---
 // These mimic the structure ABDM Gateway sends.
-// In prod, secure these via Signature Verification middleware.
+// In prod, mount these on a separate public path or use signature validation middleware.
 const webhookRouter = Router();
 
 webhookRouter.post("/v0.5/consent/on-init", AbdmCallbackController.onConsentInit);
 webhookRouter.post("/v0.5/consents/hip/notify", AbdmCallbackController.onConsentNotify);
 webhookRouter.post("/v0.5/health-information/hip/request", AbdmCallbackController.onHealthInformationRequest);
+webhookRouter.post("/v0.5/health-information/notify", AbdmCallbackController.onDataPush); // Data Push Callback
 
-// Mount webhooks separately if needed, or nest here for simplicity in this monolith
-abdmRouter.use("/callbacks", webhookRouter); 
+// Mount webhooks
+abdmRouter.use("/callbacks", webhookRouter);

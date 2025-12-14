@@ -1,36 +1,49 @@
 
 import { log } from '../../lib/logger.js';
+import { AbdmCrypto } from '../../lib/abdm_crypto.js';
 
 export const AbdmCallbackController = {
-  // Callback for Consent Request Initialization (HIU Flow)
+  
+  // Middleware-like verification logic can be applied here
+  // For sandbox, we log heavily.
+
   async onConsentInit(req, res) {
-    const { requestId, timestamp, consentRequest } = req.body;
-    log.info("ABDM Callback: Consent Initialized", { requestId, id: consentRequest?.id });
+    const { requestId, consentRequest } = req.body;
+    // const signature = req.headers['authorization'];
+    // const isValid = AbdmCrypto.verifySignature(signature, req.body);
     
-    // In a real app, update DB status from 'REQUESTING' to 'REQUESTED'
-    res.status(202).send();
+    log.info("ABDM Callback: Consent Initialized", { requestId, id: consentRequest?.id });
+    res.status(200).send();
   },
 
-  // Callback when Patient grants/denies consent (HIU Flow)
   async onConsentNotify(req, res) {
     const { notification } = req.body;
     log.info("ABDM Callback: Consent Notification", { 
         status: notification.status, 
-        consentId: notification.consentId 
+        consentId: notification.consentId,
+        artefact: notification.consentArtefacts?.[0]
     });
-
-    // In a real app, store the Consent Artefact ID and fetch the artefact
-    res.status(202).send();
+    
+    // Logic: Find internal consent by request ID and update status to GRANTED
+    res.status(200).send();
   },
 
-  // Callback for Data Request (HIP Flow - When someone asks US for data)
   async onHealthInformationRequest(req, res) {
     const { transactionId, hiRequest } = req.body;
-    log.info("ABDM Callback: Health Info Requested", { transactionId });
+    log.info("ABDM Callback: HI Request received (HIP Role)", { transactionId });
+    // Logic: Verify consent artefact, generate FHIR bundle, push data
+    res.status(200).send();
+  },
 
-    // 1. Verify Consent Artefact Signature
-    // 2. Queue job to generate FHIR Bundles
-    // 3. Trigger /on-request to Gateway
-    res.status(202).send();
+  async onDataPush(req, res) {
+      // HIU Role: Receive encrypted data
+      const { transactionId, entries, keyMaterial } = req.body;
+      log.info("ABDM Callback: Data Push Received (HIU Role)", { transactionId, count: entries?.length });
+      
+      // 1. Decrypt (using keyMaterial)
+      // 2. Validate FHIR
+      // 3. Save to Repo
+      
+      res.status(200).send();
   }
 };
