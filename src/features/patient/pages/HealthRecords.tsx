@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard, Button, Badge, Modal, Input, Loader, Checkbox } from '../../../components/UI';
 import { patientService, HealthRecord, ExtractedMedicalData, ShareResult } from '../../../services/patientService';
-import { Upload, FileText, CheckCircle, Brain, Calendar, Camera, Pill, Activity, Save, Shield, Globe, Lock, Share2, EyeOff, Clock, Copy } from 'lucide-react';
+import { Upload, FileText, CheckCircle, Brain, Calendar, Camera, Pill, Activity, Save, Shield, Globe, Lock, Share2, EyeOff, Clock, Copy, Eye } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotification } from '../../../context/NotificationContext';
 
@@ -96,11 +96,11 @@ export const HealthRecords: React.FC = () => {
   };
 
   const handleHide = async (id: string) => {
-      if(!confirm("Are you sure you want to hide this record?")) return;
+      if(!confirm("Hiding this record will make it invisible to doctors. Continue?")) return;
       try {
           await patientService.hideRecord(id);
-          await fetchRecords();
-          addNotification('info', 'Record hidden from timeline.');
+          await fetchRecords(); // Refresh to show hidden state
+          addNotification('info', 'Record marked as private.');
       } catch (e) {
           addNotification('error', 'Failed to hide record');
       }
@@ -139,7 +139,7 @@ export const HealthRecords: React.FC = () => {
            </div>
         ) : (
           records.map(rec => (
-            <GlassCard key={rec.id} className={`group relative overflow-hidden flex flex-col h-full hover:border-opacity-50 transition-all ${rec.isExternal ? 'border-orange-500/30 bg-orange-500/5' : 'hover:border-teal/40'}`}>
+            <GlassCard key={rec.id} className={`group relative overflow-hidden flex flex-col h-full hover:border-opacity-50 transition-all ${rec.isExternal ? 'border-orange-500/30 bg-orange-500/5' : 'hover:border-teal/40'} ${(rec as any).isHidden ? 'opacity-75 border-dashed' : ''}`}>
               <div className="flex justify-between items-start mb-4">
                 <div className={`p-3 rounded-lg transition-colors ${rec.isExternal ? 'bg-orange-500/10 text-orange-500' : 'bg-white/5 text-teal group-hover:bg-teal group-hover:text-white'}`}>
                   {rec.isExternal ? <Globe size={24} /> : <FileText size={24} />}
@@ -149,9 +149,13 @@ export const HealthRecords: React.FC = () => {
                         <Share2 size={16} />
                     </button>
                     {!rec.isExternal && (
-                        <button onClick={() => handleHide(rec.id)} className="p-1.5 hover:bg-white/10 rounded text-text-secondary hover:text-red-400" title="Hide record">
-                            <EyeOff size={16} />
-                        </button>
+                        (rec as any).isHidden ? (
+                            <span className="p-1.5 bg-black/40 rounded text-xs text-text-secondary flex items-center gap-1"><EyeOff size={14}/> Hidden</span>
+                        ) : (
+                            <button onClick={() => handleHide(rec.id)} className="p-1.5 hover:bg-white/10 rounded text-text-secondary hover:text-red-400" title="Hide from Doctors">
+                                <Eye size={16} />
+                            </button>
+                        )
                     )}
                 </div>
               </div>
@@ -220,7 +224,7 @@ export const HealthRecords: React.FC = () => {
           </div>
       </Modal>
 
-      {/* Upload Modal (Same as before but with real service call) */}
+      {/* Upload Modal */}
       <Modal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} title="Add Medical Document">
         <div className="space-y-6">
           {!extractedData && (
@@ -285,7 +289,6 @@ export const HealthRecords: React.FC = () => {
 
           {extractedData && (
             <div className="space-y-6 animate-fadeIn">
-               {/* Extraction Review UI from previous steps... kept concise for brevity */}
                <div className="p-4 bg-teal/10 rounded-lg border border-teal/20">
                   <div className="flex justify-between items-start mb-2">
                      <h4 className="text-teal font-bold flex items-center gap-2"><Brain size={16} /> Analysis Complete</h4>

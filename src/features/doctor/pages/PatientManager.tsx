@@ -9,7 +9,7 @@ import { PatientManagerView } from './PatientManagerView';
 
 // Internal Component accessing Context (The Container)
 const PatientManagerContainer: React.FC = () => {
-  const { loadPatient, patient, loading, clear } = useClinical();
+  const { loadPatient, patient, loading, error, clear } = useClinical();
   const { addNotification } = useNotification();
   
   // State for Lists & UI interactions
@@ -56,6 +56,7 @@ const PatientManagerContainer: React.FC = () => {
       activeTab={activeTab}
       onTabChange={setActiveTab}
       patientData={patient}
+      error={error}
     />
   );
 };

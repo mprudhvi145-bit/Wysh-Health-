@@ -22,6 +22,7 @@ export interface HealthRecord {
   extractedData?: ExtractedMedicalData;
   isExternal?: boolean;
   source?: string;
+  isHidden?: boolean; // Added for frontend logic
 }
 
 export interface ExtractedMedicalData {
@@ -78,7 +79,15 @@ const MOCK_RECORDS: HealthRecord[] = [
 
 export const patientService = {
   getRecords: async (patientId: string): Promise<HealthRecord[]> => {
-    if (config.dataMode === 'MOCK') return MOCK_RECORDS;
+    if (config.dataMode === 'MOCK') {
+        // Filter mocking logic is handled in UI display for "Patient", but data persistence is here.
+        // For hiding, we check localStorage or the object itself if persisting in memory.
+        const hiddenIds = JSON.parse(localStorage.getItem('hidden_records') || '[]');
+        return MOCK_RECORDS.map(r => ({
+            ...r,
+            isHidden: hiddenIds.includes(r.id)
+        }));
+    }
     
     try {
         const records = await api.get<any[]>('/patient/records');
@@ -90,7 +99,8 @@ export const patientService = {
             date: new Date(r.createdAt).toISOString().split('T')[0],
             url: r.fileUrl,
             tags: [r.type],
-            summary: r.extracted ? 'Analysis Available' : undefined
+            summary: r.extracted ? 'Analysis Available' : undefined,
+            isHidden: r.isHidden
         }));
     } catch (e) {
         console.error("API Error", e);
@@ -106,12 +116,6 @@ export const patientService = {
     }
 
     const formData = new FormData();
-    // Assuming record.file is a File object passed from UI, but here we receive a structured object 
-    // We need to adjust UI to pass File or handle it here. 
-    // For now, if record.file is not present, we can't upload to backend properly.
-    // UI passes `url` as object URL, but we need the File object.
-    
-    // NOTE: This requires UI change to pass the File object in `record` argument.
     if (record.fileObj) {
         formData.append('file', record.fileObj);
     }
@@ -132,7 +136,11 @@ export const patientService = {
 
   hideRecord: async (id: string): Promise<void> => {
       if (config.dataMode === 'MOCK') {
-          // Mock logic
+          const hiddenIds = JSON.parse(localStorage.getItem('hidden_records') || '[]');
+          if (!hiddenIds.includes(id)) {
+              hiddenIds.push(id);
+              localStorage.setItem('hidden_records', JSON.stringify(hiddenIds));
+          }
           return;
       }
       await api.patch(`/patient/records/${id}/hide`, {});
@@ -149,9 +157,7 @@ export const patientService = {
       return api.post(`/patient/records/${id}/share`, {});
   },
 
-  // ... (Existing AI and Rx methods) ...
   extractDocumentData: async (file: File, documentType: string): Promise<ExtractedMedicalData> => {
-    // ... (Keep existing implementation) ...
     try {
       const token = authService.getToken();
       const formData = new FormData();

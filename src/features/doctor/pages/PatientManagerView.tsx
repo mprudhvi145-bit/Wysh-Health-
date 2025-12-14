@@ -1,8 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { GlassCard, Button, Input, Loader } from '../../../components/UI';
-import { Search, UserPlus, Activity, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Search, UserPlus, Activity, ShieldCheck, ShieldAlert, Lock, Key } from 'lucide-react';
 import { ClinicalPatient } from '../../../services/doctorService';
+import { clinicalService } from '../services/clinicalService';
+import { useNotification } from '../../../context/NotificationContext';
 import OverviewTab from './tabs/OverviewTab';
 import PrescriptionsTab from './tabs/PrescriptionsTab';
 import LabsTab from './tabs/LabsTab';
@@ -19,7 +21,8 @@ interface PatientManagerViewProps {
   loading: boolean;
   activeTab: string;
   onTabChange: (tab: 'overview' | 'rx' | 'labs' | 'notes' | 'docs') => void;
-  patientData?: any; // The full chart data
+  patientData?: any;
+  error?: string;
 }
 
 export const PatientManagerView: React.FC<PatientManagerViewProps> = ({
@@ -32,8 +35,27 @@ export const PatientManagerView: React.FC<PatientManagerViewProps> = ({
   loading,
   activeTab,
   onTabChange,
-  patientData
+  patientData,
+  error
 }) => {
+  const { addNotification } = useNotification();
+  const [requesting, setRequesting] = useState(false);
+
+  const handleRequestAccess = async () => {
+      if (!selectedPatientId) return;
+      setRequesting(true);
+      try {
+          await clinicalService.requestConsent(selectedPatientId, 'Care Management');
+          addNotification('success', 'Consent request sent to patient mobile.');
+      } catch (e) {
+          addNotification('error', 'Failed to send request.');
+      } finally {
+          setRequesting(false);
+      }
+  };
+
+  const isAccessDenied = error?.includes('Access denied') || error?.includes('403');
+
   return (
     <div className="space-y-6 h-[calc(100vh-100px)] flex flex-col">
       {/* Top Bar */}
@@ -86,10 +108,38 @@ export const PatientManagerView: React.FC<PatientManagerViewProps> = ({
 
         {/* Clinical Workspace (Right Area) */}
         <div className="lg:col-span-3">
-          {patientData ? (
+          {selectedPatientId ? (
             loading ? (
-              <div className="h-full flex items-center justify-center"><Loader text="Loading clinical history..." /></div>
-            ) : (
+              <div className="h-full flex items-center justify-center"><Loader text="Secure Handshake..." /></div>
+            ) : isAccessDenied ? (
+              /* --- CONSENT GUARD UI --- */
+              <GlassCard className="h-full flex flex-col items-center justify-center text-center p-12 bg-[#0D0F12] border-red-500/20">
+                  <div className="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/30">
+                      <Lock size={48} className="text-red-500" />
+                  </div>
+                  <h2 className="text-3xl font-bold text-white mb-2">Restricted Access</h2>
+                  <p className="text-text-secondary max-w-md mb-8">
+                      You do not have an active consent token for this patient. 
+                      Access to medical records is blocked by ABDM protocol.
+                  </p>
+                  
+                  <div className="space-y-4 w-full max-w-sm">
+                      <Button 
+                        variant="primary" 
+                        className="w-full justify-center" 
+                        onClick={handleRequestAccess}
+                        disabled={requesting}
+                        icon={requesting ? <Loader text=""/> : <Key size={18}/>}
+                      >
+                          {requesting ? 'Sending Request...' : 'Request Access (OTP)'}
+                      </Button>
+                      <p className="text-xs text-text-secondary">
+                          Request expires in 15 minutes.
+                      </p>
+                  </div>
+              </GlassCard>
+            ) : patientData ? (
+              /* --- AUTHORIZED CHART --- */
               <GlassCard className="h-full flex flex-col !p-0 overflow-hidden bg-[#0D0F12]">
                 {/* Patient Header */}
                 <div className="p-6 border-b border-white/10 bg-white/5 flex flex-col md:flex-row justify-between items-start gap-4">
@@ -129,7 +179,7 @@ export const PatientManagerView: React.FC<PatientManagerViewProps> = ({
                 <div className="flex border-b border-white/10 px-6 bg-black/20 overflow-x-auto">
                   {[
                     { key: 'overview', label: 'Overview' },
-                    { key: 'notes', label: 'SOAP Notes' }, // Reordered
+                    { key: 'notes', label: 'SOAP Notes' },
                     { key: 'rx', label: 'Prescriptions' },
                     { key: 'labs', label: 'Lab Orders' },
                     { key: 'docs', label: 'Documents' }
@@ -156,7 +206,7 @@ export const PatientManagerView: React.FC<PatientManagerViewProps> = ({
                    {activeTab === 'docs' && <DocumentsTab />}
                 </div>
               </GlassCard>
-            )
+            ) : null
           ) : (
              <div className="h-full flex items-center justify-center flex-col gap-4 text-text-secondary border-2 border-dashed border-white/10 rounded-2xl bg-white/5">
                <Activity size={48} className="opacity-20" />

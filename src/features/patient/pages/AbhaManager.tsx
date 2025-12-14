@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { GlassCard, Button, Input, Badge, Modal, Loader, Checkbox } from '../../../components/UI';
-import { Shield, Smartphone, QrCode, Lock, CheckCircle, RefreshCw, FileText, ExternalLink, Plus, AlertCircle, Calendar } from 'lucide-react';
+import { Shield, Smartphone, QrCode, Lock, CheckCircle, RefreshCw, FileText, ExternalLink, Plus, AlertCircle, Calendar, UserCheck } from 'lucide-react';
 import { abdmService, AbhaProfile, ConsentArtifact } from '../../../services/abdmService';
 import { useNotification } from '../../../context/NotificationContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -49,25 +49,26 @@ export const AbhaManager: React.FC = () => {
   }, [searchParams]);
 
   // Fetch Logic
-  useEffect(() => {
-      const init = async () => {
-          if (!user) return;
-          try {
-              // Try to get profile from patient chart (since user object in auth doesn't have it yet in this mock)
-              const chart = await clinicalService.getPatientChart(user.id);
-              if (chart.patient?.abha) {
-                  setProfile(chart.patient.abha);
-                  setStep('success');
-              }
-              const consentData = await abdmService.getConsents();
-              setConsents(consentData);
-          } catch (e) {
-              console.error(e);
-          } finally {
-              setLoading(false);
+  const fetchData = async () => {
+      if (!user) return;
+      try {
+          // Try to get profile from patient chart (since user object in auth doesn't have it yet in this mock)
+          const chart = await clinicalService.getPatientChart(user.id).catch(() => ({ patient: null }));
+          if (chart.patient?.abha) {
+              setProfile(chart.patient.abha);
+              setStep('success');
           }
-      };
-      init();
+          const consentData = await abdmService.getConsents();
+          setConsents(consentData);
+      } catch (e) {
+          console.error(e);
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  useEffect(() => {
+      fetchData();
   }, [user]);
 
   const handleRequestOtp = async () => {
@@ -97,6 +98,16 @@ export const AbhaManager: React.FC = () => {
       }
   };
 
+  const handleApproveRequest = async (id: string) => {
+      try {
+          await abdmService.approveConsent(id);
+          addNotification('success', 'Access Granted to Doctor');
+          fetchData(); // Refresh list
+      } catch (e) {
+          addNotification('error', 'Approval failed');
+      }
+  };
+
   const handleSubmitConsent = async () => {
       setRequestingConsent(true);
       try {
@@ -116,10 +127,7 @@ export const AbhaManager: React.FC = () => {
           
           addNotification('success', 'Consent request sent to ABDM network');
           setIsConsentModalOpen(false);
-          
-          // Refresh list
-          const consentData = await abdmService.getConsents();
-          setConsents(consentData);
+          fetchData();
       } catch (e) {
           addNotification('error', 'Failed to create consent request');
       } finally {
@@ -273,8 +281,8 @@ export const AbhaManager: React.FC = () => {
             <div className="space-y-6 animate-fadeIn">
                 <div className="flex justify-between items-center">
                     <div>
-                        <h3 className="text-xl font-bold text-white">Active Consents</h3>
-                        <p className="text-text-secondary text-xs">Manage access to your health data</p>
+                        <h3 className="text-xl font-bold text-white">Consent Ledger</h3>
+                        <p className="text-text-secondary text-xs">Manage active and pending requests</p>
                     </div>
                     <Button variant="primary" className="text-xs" icon={<Plus size={14}/>} onClick={() => setIsConsentModalOpen(true)}>New Consent</Button>
                 </div>
@@ -298,33 +306,31 @@ export const AbhaManager: React.FC = () => {
                                         <FileText size={24} />
                                     </div>
                                     <div>
-                                        <h4 className="text-white font-bold">{consent.hipName}</h4>
+                                        <h4 className="text-white font-bold">{consent.hipName || consent.requester}</h4>
                                         <p className="text-xs text-text-secondary mb-1">Purpose: {consent.purpose}</p>
                                         <div className="flex gap-2 text-[10px] text-text-secondary">
-                                            <span>Granted: {new Date(consent.dateGranted).toLocaleDateString()}</span>
                                             <span>Expires: {new Date(consent.expiresAt).toLocaleDateString()}</span>
                                         </div>
                                     </div>
                                 </div>
                                 
                                 <div className="flex items-center gap-3">
-                                    <Badge color={consent.status === 'GRANTED' ? 'teal' : 'purple'}>{consent.status}</Badge>
-                                    {consent.status === 'GRANTED' && (
+                                    {consent.status === 'REQUESTED' ? (
+                                        <div className="flex gap-2">
+                                            <Button variant="primary" className="h-8 text-xs bg-teal" onClick={() => handleApproveRequest(consent.id)}>Approve</Button>
+                                            <Button variant="outline" className="h-8 text-xs border-red-500/30 text-red-400">Deny</Button>
+                                        </div>
+                                    ) : (
                                         <>
-                                            <Button 
-                                                variant="outline" 
-                                                className="text-xs h-8 border-red-500/30 text-red-400 hover:bg-red-500/10"
-                                            >
-                                                Revoke
-                                            </Button>
-                                            <Button 
-                                                variant="outline" 
-                                                className="text-xs h-8"
-                                                onClick={() => handleFetchData(consent.id)}
-                                                icon={<ExternalLink size={12} />}
-                                            >
-                                                Fetch Records
-                                            </Button>
+                                            <Badge color={consent.status === 'GRANTED' ? 'teal' : 'purple'}>{consent.status}</Badge>
+                                            {consent.status === 'GRANTED' && (
+                                                <Button 
+                                                    variant="outline" 
+                                                    className="text-xs h-8 border-red-500/30 text-red-400 hover:bg-red-500/10"
+                                                >
+                                                    Revoke
+                                                </Button>
+                                            )}
                                         </>
                                     )}
                                 </div>

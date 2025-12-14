@@ -4,6 +4,8 @@ import { Users, Calendar, Activity, Clock, Video, Power, ClipboardList } from 'l
 import { GlassCard, Button, Badge } from '../../components/UI';
 import { Appointment } from '../../types/appointment';
 import { useNavigate } from 'react-router-dom';
+import { RoleLayout } from '../../components/RoleLayout';
+import { getDensity } from '../../utils/uiDensity';
 
 interface DoctorDashboardViewProps {
   user: any;
@@ -21,128 +23,113 @@ export const DoctorDashboardView: React.FC<DoctorDashboardViewProps> = ({
   patientCount
 }) => {
   const navigate = useNavigate();
+  const density = getDensity('doctor');
   const todayAppointments = appointments; // In real app, filter for today
 
   return (
-    <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
-                <h1 className="text-2xl font-display font-bold text-white">
-                    Hospital OS <span className="text-purple text-sm align-top ml-2">Clinician View</span>
-                </h1>
-                <p className="text-text-secondary text-sm">Dr. {user?.name} • Cardiology</p>
+    <RoleLayout role="doctor">
+        {/* Header - Compact & Functional */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-white/5 pb-4">
+            <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-teal/20 rounded-lg flex items-center justify-center text-teal font-bold border border-teal/30">
+                    DR
+                </div>
+                <div>
+                    <h1 className={density.heading}>
+                        Clinical Station
+                    </h1>
+                    <p className={density.subheading}>Dr. {user?.name} • Cardiology Dept</p>
+                </div>
             </div>
             
-            <div className="flex items-center gap-4">
-                 <div className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all ${isOnline ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
-                     <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                     <span className={`text-sm font-bold ${isOnline ? 'text-green-400' : 'text-red-400'}`}>
-                         {isOnline ? 'Accepting Visits' : 'Offline'}
+            <div className="flex items-center gap-3">
+                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md border transition-all ${isOnline ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                     <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                     <span className={`text-xs font-bold uppercase tracking-wider ${isOnline ? 'text-green-400' : 'text-red-400'}`}>
+                         {isOnline ? 'Online' : 'Offline'}
                      </span>
                  </div>
                  <Button 
                     variant="outline" 
-                    className="!p-2 h-10 w-10 justify-center" 
+                    className="!p-1.5 h-8 w-8 justify-center" 
                     onClick={toggleAvailability}
-                    icon={<Power size={18} />}
+                    icon={<Power size={14} />}
                  />
             </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-             <GlassCard className="py-4 flex items-center gap-4 cursor-pointer hover:border-purple/50" onClick={() => navigate('/appointments')}>
-                 <div className="p-3 bg-purple/10 rounded-lg text-purple"><Calendar size={20} /></div>
+        {/* Quick Stats - High Density Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+             <GlassCard className="p-3 flex items-center gap-3 cursor-pointer hover:border-purple/50 border-white/5" onClick={() => navigate('/appointments')}>
+                 <div className="p-2 bg-purple/10 rounded text-purple"><Calendar size={18} /></div>
                  <div>
-                     <h3 className="text-2xl font-bold text-white">{todayAppointments.length}</h3>
-                     <p className="text-xs text-text-secondary uppercase">Appointments</p>
+                     <h3 className="text-lg font-bold text-white leading-none">{todayAppointments.length}</h3>
+                     <p className="text-[10px] text-text-secondary uppercase tracking-wider mt-1">Appointments</p>
                  </div>
              </GlassCard>
-             <GlassCard className="py-4 flex items-center gap-4 cursor-pointer hover:border-teal/50" onClick={() => navigate('/doctor/patients')}>
-                 <div className="p-3 bg-teal/10 rounded-lg text-teal"><Users size={20} /></div>
+             <GlassCard className="p-3 flex items-center gap-3 cursor-pointer hover:border-teal/50 border-white/5" onClick={() => navigate('/doctor/patients')}>
+                 <div className="p-2 bg-teal/10 rounded text-teal"><Users size={18} /></div>
                  <div>
-                     <h3 className="text-2xl font-bold text-white">{patientCount}</h3>
-                     <p className="text-xs text-text-secondary uppercase">Total Patients</p>
+                     <h3 className="text-lg font-bold text-white leading-none">{patientCount}</h3>
+                     <p className="text-[10px] text-text-secondary uppercase tracking-wider mt-1">Total Patients</p>
                  </div>
              </GlassCard>
-             <GlassCard className="py-4 flex items-center gap-4">
-                 <div className="p-3 bg-blue-500/10 rounded-lg text-blue-400"><Activity size={20} /></div>
+             <GlassCard className="p-3 flex items-center gap-3 border-white/5">
+                 <div className="p-2 bg-blue-500/10 rounded text-blue-400"><Activity size={18} /></div>
                  <div>
-                     <h3 className="text-2xl font-bold text-white">98%</h3>
-                     <p className="text-xs text-text-secondary uppercase">Satisfaction</p>
+                     <h3 className="text-lg font-bold text-white leading-none">98%</h3>
+                     <p className="text-[10px] text-text-secondary uppercase tracking-wider mt-1">Outcome</p>
                  </div>
              </GlassCard>
-             <GlassCard className="py-4 flex items-center gap-4">
-                 <div className="p-3 bg-yellow-500/10 rounded-lg text-yellow-400"><Clock size={20} /></div>
+             <GlassCard className="p-3 flex items-center gap-3 border-white/5">
+                 <div className="p-2 bg-yellow-500/10 rounded text-yellow-400"><Clock size={18} /></div>
                  <div>
-                     <h3 className="text-2xl font-bold text-white">4h 30m</h3>
-                     <p className="text-xs text-text-secondary uppercase">Consult Time</p>
+                     <h3 className="text-lg font-bold text-white leading-none">4h 30m</h3>
+                     <p className="text-[10px] text-text-secondary uppercase tracking-wider mt-1">Consult Time</p>
                  </div>
              </GlassCard>
         </div>
 
-        {/* Clinical Actions CTA */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-           <div 
-             className="bg-gradient-to-r from-teal/20 to-teal/5 border border-teal/20 rounded-2xl p-6 flex justify-between items-center cursor-pointer hover:border-teal/50 transition-colors group"
-             onClick={() => navigate('/doctor/patients')}
-           >
-             <div>
-               <h3 className="text-xl font-bold text-white mb-1 group-hover:text-teal transition-colors">Clinical Console</h3>
-               <p className="text-text-secondary text-sm">Manage patients, write prescriptions, and view labs.</p>
-             </div>
-             <div className="bg-teal text-white p-3 rounded-full group-hover:scale-110 transition-transform">
-               <ClipboardList size={24} />
-             </div>
-           </div>
-           
-           <div className="bg-gradient-to-r from-purple/20 to-purple/5 border border-purple/20 rounded-2xl p-6 flex justify-between items-center cursor-pointer hover:border-purple/50 transition-colors group" onClick={() => navigate('/ai-health')}>
-             <div>
-               <h3 className="text-xl font-bold text-white mb-1 group-hover:text-purple transition-colors">AI Research Hub</h3>
-               <p className="text-text-secondary text-sm">Analyze complex cases with Gemini Medical Models.</p>
-             </div>
-             <div className="bg-purple text-white p-3 rounded-full group-hover:scale-110 transition-transform">
-               <Activity size={24} />
-             </div>
-           </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: Schedule */}
-            <div className="lg:col-span-2 space-y-6">
-                <GlassCard className="min-h-[500px]">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-white font-bold">Today's Schedule</h3>
-                        <Button variant="outline" className="text-xs h-8" onClick={() => navigate('/doctor/schedule')}>Manage Slots</Button>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-280px)] min-h-[500px]">
+            {/* Left: Schedule - Maximized List View */}
+            <div className="lg:col-span-2 h-full">
+                <GlassCard className="h-full flex flex-col p-0 overflow-hidden">
+                    <div className="flex justify-between items-center p-3 border-b border-white/10 bg-white/5">
+                        <h3 className="text-white font-bold text-sm">Today's Schedule</h3>
+                        <div className="flex gap-2">
+                            <Button variant="outline" className="text-[10px] h-6 px-2" onClick={() => navigate('/doctor/schedule')}>Slots</Button>
+                            <Button variant="primary" className="text-[10px] h-6 px-2">Start Next</Button>
+                        </div>
                     </div>
                     
-                    <div className="space-y-3">
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                         {todayAppointments.length === 0 ? (
-                             <div className="text-center py-12 border border-dashed border-white/10 rounded-xl">
-                                <p className="text-text-secondary">No appointments scheduled for today.</p>
+                             <div className="text-center py-12 border border-dashed border-white/10 rounded-xl m-2">
+                                <p className="text-text-secondary text-xs">No appointments scheduled.</p>
                              </div>
                         ) : (
                             todayAppointments.map(apt => (
-                                <div key={apt.id} className="flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors">
-                                    <div className="text-center min-w-[60px]">
-                                        <p className="text-white font-bold">{apt.time}</p>
-                                        <p className="text-xs text-text-secondary">Today</p>
+                                <div key={apt.id} className="flex items-center gap-3 p-3 bg-white/5 border border-white/5 rounded hover:bg-white/10 transition-colors group cursor-pointer" onClick={() => navigate(`/appointments/${apt.id}`)}>
+                                    <div className="text-center min-w-[50px] bg-black/30 rounded p-1">
+                                        <p className="text-white font-bold text-sm leading-none">{apt.time}</p>
                                     </div>
-                                    <div className="w-10 h-10 rounded-full bg-purple/20 flex items-center justify-center text-purple font-bold">
+                                    <div className="w-8 h-8 rounded bg-purple/20 flex items-center justify-center text-purple font-bold text-xs">
                                         {apt.doctorName.charAt(0)}
                                     </div>
-                                    <div className="flex-1">
-                                        <h4 className="text-white font-bold text-sm">Patient ID: {apt.patientId}</h4>
-                                        <p className="text-xs text-text-secondary">{apt.type === 'video' ? 'Telemedicine Consult' : 'In-Person Visit'}</p>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="text-white font-bold text-xs truncate">ID: {apt.patientId}</h4>
+                                            <span className="text-[10px] px-1.5 rounded bg-teal/10 text-teal border border-teal/20">{apt.type}</span>
+                                        </div>
+                                        <p className="text-[10px] text-text-secondary truncate">Follow-up • Insurance Verified</p>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         {apt.type === 'video' && (
-                                            <Button variant="primary" className="!py-1 !px-3 text-xs h-8" icon={<Video size={12}/>}>
+                                            <Button variant="primary" className="!py-1 !px-2 text-[10px] h-6" icon={<Video size={10}/>}>
                                                 Join
                                             </Button>
                                         )}
-                                        <Button variant="outline" className="!py-1 !px-3 text-xs h-8" onClick={() => navigate(`/appointments/${apt.id}`)}>Details</Button>
+                                        <Button variant="outline" className="!py-1 !px-2 text-[10px] h-6">Chart</Button>
                                     </div>
                                 </div>
                             ))
@@ -151,26 +138,54 @@ export const DoctorDashboardView: React.FC<DoctorDashboardViewProps> = ({
                 </GlassCard>
             </div>
 
-            {/* Right: Patient List Summary */}
-            <GlassCard>
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-white font-bold">Recent Patients</h3>
-                    <Badge color="purple">Active List</Badge>
+            {/* Right: Quick Actions & Recent - Dense */}
+            <div className="space-y-4 h-full flex flex-col">
+                <div 
+                    className="bg-gradient-to-r from-teal/20 to-teal/5 border border-teal/20 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:border-teal/50 transition-colors group"
+                    onClick={() => navigate('/doctor/patients')}
+                >
+                    <div>
+                        <h3 className="text-sm font-bold text-white group-hover:text-teal transition-colors">Clinical Console</h3>
+                        <p className="text-[10px] text-text-secondary">Full patient management suite</p>
+                    </div>
+                    <div className="bg-teal text-white p-2 rounded-lg group-hover:scale-110 transition-transform">
+                        <ClipboardList size={16} />
+                    </div>
                 </div>
-                
-                {/* Visual placeholder since we don't pass the full mock list here to keep props clean */}
-                <div className="text-center py-8 text-text-secondary">
-                    <p className="text-sm mb-4">Access full roster in Clinical Console</p>
-                    <Button 
-                        variant="outline" 
-                        className="w-full text-sm" 
-                        onClick={() => navigate('/doctor/patients')}
-                    >
-                        Go to Patient Manager
-                    </Button>
-                </div>
-            </GlassCard>
+
+                <GlassCard className="flex-1 flex flex-col p-0 overflow-hidden">
+                    <div className="flex justify-between items-center p-3 border-b border-white/10 bg-white/5">
+                        <h3 className="text-white font-bold text-sm">Active Roster</h3>
+                        <Badge color="purple">Live</Badge>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                        {/* Mock Roster */}
+                        {[1,2,3,4].map(i => (
+                            <div key={i} className="p-2 rounded border border-white/5 hover:border-white/20 transition-all cursor-pointer bg-white/5">
+                                <div className="flex justify-between items-center mb-1">
+                                    <h4 className="text-white font-bold text-xs">Patient #{9000+i}</h4>
+                                    <span className="text-[9px] px-1.5 rounded bg-green-500/20 text-green-300">Stable</span>
+                                </div>
+                                <div className="flex justify-between text-[10px] text-text-secondary">
+                                    <span>Age: 34</span>
+                                    <span>Last: 2d ago</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="p-2 border-t border-white/10">
+                        <Button 
+                            variant="outline" 
+                            className="w-full text-[10px] h-7" 
+                            onClick={() => navigate('/doctor/patients')}
+                        >
+                            View All
+                        </Button>
+                    </div>
+                </GlassCard>
+            </div>
         </div>
-    </div>
+    </RoleLayout>
   );
 };

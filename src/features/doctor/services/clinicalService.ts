@@ -34,7 +34,7 @@ export interface CloseAppointmentPayload {
   followUp?: string;
 }
 
-// Mock Data ... (kept for fallback)
+// Mock Data
 const MOCK_CATALOGS = {
   medications: [
     { id: 'med_1', name: 'Metoprolol', strength: '50mg', form: 'Tablet', isGeneric: true },
@@ -72,7 +72,10 @@ const MOCK_PATIENT_CHART = {
     labOrders: [],
     clinicalNotes: [],
     soapNotes: [],
-    documents: []
+    documents: [
+      { id: 'doc_1', title: 'Lab Report', date: '2024-10-10', type: 'Lab', isHidden: false },
+      { id: 'doc_2', title: 'Scan Report', date: '2024-09-15', type: 'Imaging', isHidden: true } // Hidden doc
+    ]
 };
 
 export const clinicalService = {
@@ -81,7 +84,6 @@ export const clinicalService = {
     try {
       return await api.get<any>("/clinical/catalogs");
     } catch (error) {
-      console.warn("API unavailable, falling back to mock catalogs", error);
       return MOCK_CATALOGS;
     }
   },
@@ -94,75 +96,58 @@ export const clinicalService = {
     try {
       return await api.get<any[]>("/clinical/patients", { query });
     } catch (error) {
-      console.warn("API unavailable, falling back to mock search", error);
       return mockResult;
     }
   },
 
   getPatientChart: async (patientId: string) => {
-    if (config.dataMode === 'MOCK') return MOCK_PATIENT_CHART;
+    if (config.dataMode === 'MOCK') {
+        // DEMO LOGIC: Check consent in localStorage
+        const status = localStorage.getItem('demo_consent_status');
+        if (status !== 'granted') {
+            throw { message: 'Access denied: Consent required', status: 403 };
+        }
+        return MOCK_PATIENT_CHART;
+    }
     
     try {
       return await api.get<any>(`/clinical/patients/${patientId}/chart`);
     } catch (error) {
-      console.warn("API unavailable, falling back to mock chart", error);
-      return MOCK_PATIENT_CHART;
+      throw error;
     }
+  },
+
+  requestConsent: async (patientId: string, purpose: string) => {
+      if (config.dataMode === 'MOCK') {
+          // Trigger demo signal
+          localStorage.setItem('demo_consent_request', 'pending');
+          return { success: true };
+      }
+      return api.post('/consent/request', { patientId, purpose });
   },
 
   createPrescription: async (payload: CreatePrescriptionPayload) => {
-    const mockResponse = { id: `rx_${Date.now()}`, ...payload, createdAt: new Date().toISOString() };
-    if (config.dataMode === 'MOCK') return mockResponse;
-
-    try {
-      return await api.post("/clinical/prescriptions", payload);
-    } catch (error) {
-      console.warn("API unavailable, simulating prescription creation", error);
-      return mockResponse;
-    }
+    if (config.dataMode === 'MOCK') return { success: true };
+    return api.post("/clinical/prescriptions", payload);
   },
 
   createLabOrder: async (payload: CreateLabOrderPayload) => {
-    const mockResponse = { id: `lab_${Date.now()}`, ...payload, status: 'ORDERED', createdAt: new Date().toISOString() };
-    if (config.dataMode === 'MOCK') return mockResponse;
-
-    try {
-      return await api.post("/clinical/labs/orders", payload);
-    } catch (error) {
-      console.warn("API unavailable, simulating lab order", error);
-      return mockResponse;
-    }
+    if (config.dataMode === 'MOCK') return { success: true };
+    return api.post("/clinical/labs/orders", payload);
   },
 
   addNote: async (payload: CreateNotePayload) => {
-    const mockResponse = { id: `note_${Date.now()}`, ...payload, createdAt: new Date().toISOString() };
-    if (config.dataMode === 'MOCK') return mockResponse;
-
-    try {
-      return await api.post("/clinical/notes", payload);
-    } catch (error) {
-      console.warn("API unavailable, simulating note addition", error);
-      return mockResponse;
-    }
+    if (config.dataMode === 'MOCK') return { success: true };
+    return api.post("/clinical/notes", payload);
   },
 
   startAppointment: async (appointmentId: string) => {
     if (config.dataMode === 'MOCK') return { success: true };
-    try {
-      return await api.post(`/clinical/appointments/${appointmentId}/start`, {});
-    } catch (error) {
-      console.warn("API unavailable, simulating start appointment", error);
-      return { success: true };
-    }
+    return api.post(`/clinical/appointments/${appointmentId}/start`, {});
   },
 
   closeAppointment: async (appointmentId: string, payload: CloseAppointmentPayload) => {
     if (config.dataMode === 'MOCK') return { success: true };
-    try {
-      return await api.post(`/clinical/appointments/${appointmentId}/close`, payload);
-    } catch (error) {
-      console.warn("API unavailable, simulating close appointment", error);
-      return { success: true };
-    }
+    return api.post(`/clinical/appointments/${appointmentId}/close`, payload);
   },
 };
