@@ -26,7 +26,7 @@ export const EmergencyPublic: React.FC = () => {
     load();
   }, [wyshId]);
 
-  if (loading) return <div className="min-h-screen bg-red-950 flex items-center justify-center"><Loader text="Accessing Emergency Data..." /></div>;
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader text="Accessing Emergency Data..." /></div>;
 
   if (error) {
       return (
@@ -41,60 +41,60 @@ export const EmergencyPublic: React.FC = () => {
   return (
     <div className="min-h-screen bg-black text-white p-4 pb-20">
         {/* Urgent Header */}
-        <div className="bg-red-600 text-white p-4 -m-4 mb-6 text-center font-bold animate-pulse flex items-center justify-center gap-2">
-            <AlertTriangle size={24} /> MEDICAL EMERGENCY VIEW
+        <div className="bg-red-600 text-white p-4 -m-4 mb-6 text-center font-bold animate-pulse flex items-center justify-center gap-2 shadow-lg z-50 relative">
+            <AlertTriangle size={24} /> MEDICAL EMERGENCY VIEW - PARAMEDIC USE ONLY
         </div>
 
         <div className="max-w-lg mx-auto space-y-6">
             
-            {/* Identity Card */}
-            <GlassCard className="border-red-500/50 bg-red-900/10">
+            {/* Identity Card - Using Emergency Variant */}
+            <GlassCard variant="emergency" className="border-red-600">
                 <div className="flex items-center gap-4">
-                    <div className="w-20 h-20 rounded-full bg-gray-800 overflow-hidden border-2 border-white/20">
+                    <div className="w-20 h-20 rounded-full bg-gray-900 overflow-hidden border-2 border-white">
                         {profile?.avatar ? <img src={profile.avatar} className="w-full h-full object-cover" /> : <User className="w-full h-full p-4"/>}
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-white">{profile?.name}</h1>
+                        <h1 className="text-3xl font-black text-white">{profile?.name}</h1>
                         <div className="flex gap-2 mt-2">
-                            <Badge color="purple">Blood: {profile?.bloodGroup || 'Unknown'}</Badge>
-                            <span className="text-xs text-text-secondary px-2 py-1 border border-white/10 rounded">ID: {profile?.wyshId}</span>
+                            <span className="bg-white text-red-600 px-3 py-1 rounded font-bold text-sm border border-red-600">Blood: {profile?.bloodGroup || 'Unknown'}</span>
+                            <span className="text-sm text-gray-300 px-2 py-1 border border-white/20 rounded font-mono">ID: {profile?.wyshId}</span>
                         </div>
                     </div>
                 </div>
             </GlassCard>
 
-            {/* Critical Medical Info */}
+            {/* Critical Medical Info - High Contrast Blocks */}
             <div className="space-y-4">
-                <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl">
-                    <h3 className="text-red-400 font-bold uppercase tracking-wider text-sm mb-3 flex items-center gap-2">
-                        <ShieldAlert size={16} /> Critical Allergies
+                <div className="bg-red-900 border-2 border-red-500 p-6 rounded-xl">
+                    <h3 className="text-white font-black uppercase tracking-wider text-lg mb-4 flex items-center gap-2">
+                        <ShieldAlert size={24} className="text-red-200" /> Critical Allergies
                     </h3>
                     {profile?.medicalAlerts.allergies.length ? (
                         <div className="flex flex-wrap gap-2">
                             {profile.medicalAlerts.allergies.map(a => (
-                                <span key={a} className="bg-red-500 text-white px-3 py-1 rounded font-bold text-sm">{a}</span>
+                                <span key={a} className="bg-white text-red-700 px-4 py-2 rounded-lg font-black text-lg shadow-sm border border-red-200">{a}</span>
                             ))}
                         </div>
-                    ) : <span className="text-sm text-gray-400">None Recorded</span>}
+                    ) : <span className="text-lg text-white/70 font-medium">None Recorded</span>}
                 </div>
 
-                <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-xl">
-                    <h3 className="text-blue-400 font-bold uppercase tracking-wider text-sm mb-3 flex items-center gap-2">
+                <div className="bg-gray-900 border border-gray-700 p-6 rounded-xl">
+                    <h3 className="text-blue-300 font-bold uppercase tracking-wider text-sm mb-3 flex items-center gap-2">
                         <Heart size={16} /> Chronic Conditions
                     </h3>
                     {profile?.medicalAlerts.conditions.length ? (
-                        <ul className="list-disc pl-5 text-sm space-y-1">
+                        <ul className="list-disc pl-5 text-base text-white font-medium space-y-1">
                             {profile.medicalAlerts.conditions.map(c => <li key={c}>{c}</li>)}
                         </ul>
                     ) : <span className="text-sm text-gray-400">None Recorded</span>}
                 </div>
 
-                <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-xl">
+                <div className="bg-gray-900 border border-gray-700 p-6 rounded-xl">
                     <h3 className="text-gray-300 font-bold uppercase tracking-wider text-sm mb-3 flex items-center gap-2">
                         <Activity size={16} /> Current Medications
                     </h3>
                     {profile?.medicalAlerts.currentMeds.length ? (
-                        <ul className="text-sm space-y-1 text-gray-300">
+                        <ul className="text-base text-white space-y-1">
                             {profile.medicalAlerts.currentMeds.map(m => <li key={m}>• {m}</li>)}
                         </ul>
                     ) : <span className="text-sm text-gray-400">None Recorded</span>}
@@ -102,17 +102,24 @@ export const EmergencyPublic: React.FC = () => {
             </div>
 
             {/* Contacts */}
-            <div className="space-y-3">
+            <div className="space-y-4 pt-4">
                 <h3 className="text-gray-400 text-xs font-bold uppercase tracking-wider pl-1">Emergency Contacts</h3>
                 {profile?.emergencyContacts.primary && (
                     <a href={`tel:${profile.emergencyContacts.primary}`} className="block">
-                        <Button className="w-full bg-green-600 hover:bg-green-700 border-transparent text-white justify-center h-12 text-lg">
-                            <Phone className="mr-2" /> Call {profile.emergencyContacts.relationship}
+                        <Button variant="emergency" className="w-full justify-center h-16 text-xl" icon={<Phone className="mr-2" size={24} />}>
+                            Call {profile.emergencyContacts.relationship}
                         </Button>
                     </a>
                 )}
-                <div className="text-center text-xs text-gray-500 mt-4">
-                    Access logged at {new Date().toLocaleTimeString()} • IP Recorded
+                {profile?.emergencyContacts.secondary && (
+                    <a href={`tel:${profile.emergencyContacts.secondary}`} className="block">
+                        <Button variant="outline" className="w-full justify-center h-12 text-base border-white/30 text-white">
+                            Secondary: {profile.emergencyContacts.secondary}
+                        </Button>
+                    </a>
+                )}
+                <div className="text-center text-xs text-gray-500 mt-8">
+                    Access logged at {new Date().toLocaleTimeString()} • IP Recorded and Sent to Patient
                 </div>
             </div>
         </div>

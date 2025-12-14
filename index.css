@@ -41,7 +41,7 @@ body::before {
   flex-direction: column;
 }
 
-/* Hybrid Glass Panel - Base */
+/* --- PREMIUM HYBRID GLASS (Default) --- */
 .glass-panel {
   background: var(--glass-surface);
   backdrop-filter: blur(16px);
@@ -56,29 +56,40 @@ body::before {
   box-shadow: 0 0 25px rgba(69, 162, 158, 0.15);
 }
 
-/* EMERGENCY MODE OVERRIDE - Critical Clinical Safety */
+/* --- EMERGENCY MODE OVERRIDE (Critical Safety) --- */
+/* Used for paramedic/emergency views. Zero blur, max contrast. */
 .glass-panel.emergency {
   background: #000000 !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border: 2px solid #EF4444 !important; /* High Viz Red */
   box-shadow: none !important;
+  border-radius: 12px;
 }
 
-/* HIGH CONTRAST MODE - Clinical Readability */
+.glass-panel.emergency * {
+  text-shadow: none !important;
+}
+
+/* --- HIGH CONTRAST MODE (Accessibility) --- */
 .glass-panel.high-contrast {
   background: #0B0C10 !important;
   backdrop-filter: none !important;
   border: 1px solid #E5E7EB !important; /* Gray-200 */
 }
 
-/* Reduced Motion Preference */
+/* --- REDUCED MOTION (Performance & Vestibular Disorders) --- */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  
+  .animate-float, .animate-pulse, .animate-spin, .animate-shimmer {
+    animation: none !important;
+    transform: none !important;
   }
 }
 

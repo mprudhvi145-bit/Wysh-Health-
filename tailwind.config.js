@@ -13,22 +13,28 @@ export default {
         display: ['Space Grotesk', 'sans-serif'],
       },
       colors: {
-        surgical: '#0B0C10', // Deep Void
-        'surgical-light': '#1F2833', // Gunmetal
+        surgical: '#0B0C10', // Deep Void - Base Background
+        'surgical-light': '#1F2833', // Gunmetal - Secondary Background
         teal: {
-          DEFAULT: '#45A29E', // Muted Teal
-          glow: '#66FCF1', // Electric Teal
+          DEFAULT: '#45A29E', // Muted Teal - Clinical Accents
+          glow: '#66FCF1', // Electric Teal - Active States/Highlights
           dim: 'rgba(69, 162, 158, 0.1)'
         },
         purple: {
-          DEFAULT: '#8860D0', // Deep Purple
-          light: '#C56CFF', // Neon Purple
+          DEFAULT: '#8860D0', // Deep Purple - AI/Tech Features
+          light: '#C56CFF', // Neon Purple - Gradients
           dim: 'rgba(136, 96, 208, 0.1)'
         },
         text: {
-          primary: '#C5C6C7', // Light Gray
-          secondary: '#9BA5AD',
+          primary: '#C5C6C7', // Light Gray - Body Text (High legibility)
+          secondary: '#9BA5AD', // Muted Gray - Metadata
           highlight: '#FFFFFF'
+        },
+        // Emergency specific palette
+        danger: {
+          DEFAULT: '#EF4444',
+          bg: '#450a0a',
+          border: '#b91c1c'
         }
       },
       backgroundImage: {

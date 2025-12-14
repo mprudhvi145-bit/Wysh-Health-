@@ -19,18 +19,22 @@ export const EmergencyAccess: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <GlassCard className="flex flex-col items-center justify-center text-center p-8 border-red-500/20 bg-red-500/5">
-                <div className="w-48 h-48 bg-white p-2 rounded-xl mb-6">
-                    <QrCode className="w-full h-full text-black" />
+            <GlassCard variant="emergency" className="flex flex-col items-center justify-center text-center p-8 bg-red-900/10 border-red-500/50">
+                <div className="bg-white p-4 rounded-xl mb-6 shadow-2xl">
+                    <QrCode className="w-48 h-48 text-black" />
                 </div>
-                <h2 className="text-xl font-bold text-white mb-1">{user?.name}</h2>
-                <Badge color="purple">Blood: O+</Badge>
-                <div className="mt-6 p-4 bg-black/40 rounded-lg border border-red-500/30 w-full">
-                    <p className="text-xs text-red-400 uppercase font-bold mb-2">Scan for:</p>
-                    <ul className="text-sm text-white space-y-1">
+                <h2 className="text-2xl font-bold text-white mb-2">{user?.name}</h2>
+                <div className="flex gap-2 mb-6">
+                    <Badge color="red">Emergency QR</Badge>
+                    <Badge color="purple">Blood: O+</Badge>
+                </div>
+                <div className="p-4 bg-black/60 rounded-lg border border-red-500/30 w-full text-left">
+                    <p className="text-xs text-red-400 uppercase font-bold mb-2 flex items-center gap-2"><AlertTriangle size={12}/> Public Access Data:</p>
+                    <ul className="text-sm text-gray-300 space-y-1 list-disc pl-4">
                         <li>Allergies</li>
                         <li>Chronic Conditions</li>
                         <li>Emergency Contacts</li>
+                        <li>Blood Group</li>
                     </ul>
                 </div>
             </GlassCard>
@@ -41,42 +45,44 @@ export const EmergencyAccess: React.FC = () => {
                         <Phone size={18} className="text-teal" /> Emergency Contacts
                     </h3>
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                        <div className="flex justify-between items-center p-4 bg-white/5 rounded-lg border border-white/5">
                             <div>
-                                <p className="text-white font-medium">Jane Doe (Spouse)</p>
+                                <p className="text-white font-bold">Jane Doe (Spouse)</p>
                                 <p className="text-xs text-text-secondary">Primary Contact</p>
                             </div>
                             <Button variant="outline" className="text-xs h-8">Edit</Button>
                         </div>
-                        <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                        <div className="flex justify-between items-center p-4 bg-white/5 rounded-lg border border-white/5">
                             <div>
-                                <p className="text-white font-medium">Dr. Sarah Chen</p>
+                                <p className="text-white font-bold">Dr. Sarah Chen</p>
                                 <p className="text-xs text-text-secondary">Cardiologist</p>
                             </div>
                             <Button variant="outline" className="text-xs h-8">Call</Button>
                         </div>
                     </div>
+                    <Button variant="primary" className="w-full mt-4">Add Contact</Button>
                 </GlassCard>
 
                 <GlassCard>
                     <h3 className="text-white font-bold mb-4 flex items-center gap-2">
                         <Activity size={18} className="text-red-400" /> Critical Medical Data
                     </h3>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         <div>
-                            <span className="text-xs text-text-secondary uppercase">Allergies</span>
-                            <div className="flex gap-2 mt-1">
-                                <Badge color="purple">Peanuts</Badge>
-                                <Badge color="purple">Penicillin</Badge>
+                            <span className="text-xs text-text-secondary uppercase font-bold">Allergies</span>
+                            <div className="flex gap-2 mt-2">
+                                <Badge color="red">Peanuts</Badge>
+                                <Badge color="red">Penicillin</Badge>
                             </div>
                         </div>
                         <div>
-                            <span className="text-xs text-text-secondary uppercase">Conditions</span>
-                            <div className="flex gap-2 mt-1">
+                            <span className="text-xs text-text-secondary uppercase font-bold">Conditions</span>
+                            <div className="flex gap-2 mt-2">
                                 <Badge color="teal">Arrhythmia</Badge>
                             </div>
                         </div>
                     </div>
+                    <Button variant="outline" className="w-full mt-4 text-xs">Update Clinical Profile</Button>
                 </GlassCard>
             </div>
         </div>
