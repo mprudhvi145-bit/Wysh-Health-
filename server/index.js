@@ -11,7 +11,7 @@ import { requestId } from './middleware/requestId.js';
 import { metricsMiddleware } from './middleware/metrics.js';
 import { log } from './lib/logger.js';
 import { globalLimiter } from './middleware/limiter.js';
-import { maintenanceGuard } from './middleware/maintenance.js'; // NEW
+import { maintenanceGuard } from './middleware/maintenance.js';
 
 // Bootstrap & Checks
 import { envCheck } from './bootstrap/envCheck.js';
@@ -46,7 +46,25 @@ const upload = multer({
 });
 
 // --- Middleware Stack ---
-app.use(helmet());
+
+// Security Hardening (Step 12)
+app.use(helmet({
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true
+  },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://accounts.google.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'", "https://accounts.google.com", process.env.CLIENT_URL],
+      frameSrc: ["'self'", "https://accounts.google.com", "https://meet.jit.si"]
+    }
+  }
+}));
+
 app.use(requestId);
 app.use(metricsMiddleware);
 app.use(globalLimiter);

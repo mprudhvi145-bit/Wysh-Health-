@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Menu, X, Activity, User, LogOut, ChevronDown, Bell } from 'lucide-react';
+import { Menu, X, Activity, User, LogOut, ChevronDown, Bell, ShieldCheck } from 'lucide-react';
 import { NAV_ITEMS } from '../utils/constants';
 import { NeuralGrid } from './3DVisuals';
 import { useAuth } from '../context/AuthContext';
@@ -98,14 +98,21 @@ const Navbar: React.FC = () => {
                         )}
                     </div>
                     
-                    <button 
-                        onClick={handleLogout}
-                        className="absolute top-10 right-0 w-32 bg-surgical border border-white/10 rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto shadow-xl"
-                    >
-                        <div className="flex items-center gap-2 text-red-400 text-sm hover:bg-white/5 p-2 rounded">
+                    <div className="absolute top-10 right-0 w-48 bg-surgical border border-white/10 rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto shadow-xl flex flex-col gap-1">
+                        <button onClick={() => navigate('/profile')} className="flex items-center gap-2 text-text-secondary text-sm hover:text-white hover:bg-white/5 p-2 rounded w-full text-left">
+                            <User size={14} /> Profile
+                        </button>
+                        <button onClick={() => navigate('/security')} className="flex items-center gap-2 text-text-secondary text-sm hover:text-white hover:bg-white/5 p-2 rounded w-full text-left">
+                            <ShieldCheck size={14} /> Security Center
+                        </button>
+                        <div className="h-px bg-white/10 my-1" />
+                        <button 
+                            onClick={handleLogout}
+                            className="flex items-center gap-2 text-red-400 text-sm hover:bg-white/5 p-2 rounded w-full text-left"
+                        >
                             <LogOut size={14} /> Logout
-                        </div>
-                    </button>
+                        </button>
+                    </div>
                 </div>
              </div>
           ) : (
@@ -150,7 +157,10 @@ const Navbar: React.FC = () => {
                              <p className="text-xs text-text-secondary uppercase">{user?.role}</p>
                         </div>
                     </div>
-                    <Button variant="outline" onClick={handleLogout} icon={<LogOut size={16}/>} className="justify-center">
+                    <Button variant="outline" onClick={() => { navigate('/security'); setIsOpen(false); }} icon={<ShieldCheck size={16}/>} className="justify-center">
+                        Security Center
+                    </Button>
+                    <Button variant="outline" onClick={handleLogout} icon={<LogOut size={16}/>} className="justify-center text-red-400 border-red-500/30">
                         Logout
                     </Button>
                   </>
@@ -211,7 +221,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </ul>
           </div>
           <div>
-             <h4 className="text-white font-bold mb-4">Legal</h4>
+             <h4 className="text-white font-bold mb-4">Legal & Compliance</h4>
+             <ul className="space-y-2 text-text-secondary text-sm mb-4">
+               <li><a href="#/legal" className="hover:text-teal transition-colors">Privacy Policy</a></li>
+               <li><a href="#/legal" className="hover:text-teal transition-colors">Terms of Service</a></li>
+               <li><a href="#/products/abdm" className="hover:text-teal transition-colors">ABDM Certification</a></li>
+             </ul>
              <p className="text-xs text-text-secondary">© 2024 Wysh Group. All rights reserved.</p>
           </div>
         </div>

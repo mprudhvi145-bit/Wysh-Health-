@@ -7,6 +7,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Investor } from './pages/Investor';
 import { Contact } from './pages/Contact';
 import { Team } from './pages/Team';
+import { Legal } from './pages/Legal'; // New
 import { Products } from './pages/Products';
 import { EMRProduct } from './pages/products/EMRProduct';
 import { ABDMProduct } from './pages/products/ABDMProduct';
@@ -25,6 +26,7 @@ import { AppointmentListPage } from './features/appointments/pages/AppointmentLi
 import { AppointmentDetail } from './features/appointments/pages/AppointmentDetail';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { HealthRecords } from './features/patient/pages/HealthRecords';
+import { SecurityPage } from './features/security/SecurityPage'; // New
 import { PatientManager } from './features/doctor/pages/PatientManager';
 import { ScheduleManager } from './features/doctor/pages/ScheduleManager';
 import { ProfilePage } from './features/profile/ProfilePage';
@@ -34,7 +36,7 @@ import { AppointmentSummary } from './features/patient/pages/AppointmentSummary'
 import { AIInsights } from './features/patient/pages/AIInsights';
 import { AbhaManager } from './features/patient/pages/AbhaManager';
 import { EmergencyAccess } from './features/patient/pages/EmergencyAccess';
-import { EmergencyPublic } from './pages/EmergencyPublic'; // New Import
+import { EmergencyPublic } from './pages/EmergencyPublic';
 
 const App: React.FC = () => {
   return (
@@ -56,6 +58,7 @@ const App: React.FC = () => {
                             <Route path="/investors" element={<Investor />} />
                             <Route path="/contact" element={<Contact />} />
                             <Route path="/team" element={<Team />} />
+                            <Route path="/legal" element={<Legal />} />
                             
                             {/* Product Suite */}
                             <Route path="/products" element={<Products />} />
@@ -127,6 +130,12 @@ const App: React.FC = () => {
                             <Route path="/profile" element={
                                 <ProtectedRoute>
                                     <ProfilePage />
+                                </ProtectedRoute>
+                            } />
+
+                            <Route path="/security" element={
+                                <ProtectedRoute>
+                                    <SecurityPage />
                                 </ProtectedRoute>
                             } />
 

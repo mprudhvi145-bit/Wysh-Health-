@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../../services/api';
 import { GlassCard, Button, Badge, Loader, Modal } from '../../../components/UI';
-import { Brain, FileText, ArrowLeft, ShieldCheck, AlertCircle, Heart, Zap, Activity } from 'lucide-react';
+import { Brain, FileText, ArrowLeft, ShieldCheck, AlertCircle, Heart, Zap, Activity, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
@@ -12,6 +12,7 @@ export const AIInsights: React.FC = () => {
   const navigate = useNavigate();
   const [overview, setOverview] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showPolicy, setShowPolicy] = useState(false);
 
   useEffect(() => {
     const fetchOverview = async () => {
@@ -45,17 +46,22 @@ export const AIInsights: React.FC = () => {
                  <h1 className="text-3xl font-display font-bold text-white">Health Intelligence</h1>
                  <p className="text-text-secondary text-sm">Powered by Wysh AI Engine v2.5</p>
             </div>
-            {overview && (
-                <div className="flex items-center gap-3">
-                    <div className="text-right">
-                        <p className="text-xs text-text-secondary uppercase tracking-wider">Overall Score</p>
-                        <p className="text-2xl font-bold text-teal-glow">{overview.healthScore}/100</p>
+            <div className="flex items-center gap-4">
+                <Button variant="outline" className="text-xs h-8" onClick={() => setShowPolicy(true)} icon={<Info size={12}/>}>
+                    AI Governance Policy
+                </Button>
+                {overview && (
+                    <div className="flex items-center gap-3">
+                        <div className="text-right">
+                            <p className="text-xs text-text-secondary uppercase tracking-wider">Overall Score</p>
+                            <p className="text-2xl font-bold text-teal-glow">{overview.healthScore}/100</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-full border-4 border-teal flex items-center justify-center bg-teal/10 text-white font-bold">
+                            {overview.healthScore}
+                        </div>
                     </div>
-                    <div className="w-12 h-12 rounded-full border-4 border-teal flex items-center justify-center bg-teal/10 text-white font-bold">
-                        {overview.healthScore}
-                    </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
 
         {!overview ? (
@@ -136,6 +142,23 @@ export const AIInsights: React.FC = () => {
                 Always verify with a certified healthcare professional.
              </p>
         </div>
+
+        {/* Governance Modal */}
+        <Modal isOpen={showPolicy} onClose={() => setShowPolicy(false)} title="AI Governance">
+            <div className="space-y-4">
+                <div className="p-4 bg-teal/10 border border-teal/20 rounded-lg text-sm text-white">
+                    Wysh Care employs artificial intelligence solely as a <strong>Clinical Decision Support System (CDSS)</strong>.
+                </div>
+                <ul className="list-disc pl-5 text-text-secondary text-sm space-y-2">
+                    <li>AI does not autonomously diagnose or prescribe.</li>
+                    <li>All outputs are probabilistic and require human verification.</li>
+                    <li>Data used for inference is ephemeral and not used to train global models without anonymized consent.</li>
+                </ul>
+                <div className="flex justify-end pt-4">
+                    <Button onClick={() => setShowPolicy(false)}>Acknowledge</Button>
+                </div>
+            </div>
+        </Modal>
     </div>
   );
 };
