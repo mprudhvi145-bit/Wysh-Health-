@@ -1,3 +1,4 @@
+
 import { Router } from "express";
 import { ClinicalController } from "./controller.js";
 import { authRequired } from "../../middleware/auth.js";
@@ -5,18 +6,15 @@ import { requireRole } from "../../middleware/rbac.js";
 import { doctorOwnsPatient } from "../../middleware/ownership.js";
 import { audit } from "../../middleware/audit.js";
 import { aiLimiter } from "../../middleware/limiter.js";
+import { tenantGuard } from "../../middleware/tenant.js";
 
 export const clinicalRouter = Router();
 
-// Apply auth to all clinical routes
 clinicalRouter.use(authRequired);
+clinicalRouter.use(tenantGuard); // Apply multi-tenancy check
 
-// --- Clinical Catalogs (Pillar 1) ---
-clinicalRouter.get(
-  "/catalogs",
-  // Cache-Control headers could be added here in a real app
-  ClinicalController.getCatalogs
-);
+// --- Clinical Catalogs ---
+clinicalRouter.get("/catalogs", ClinicalController.getCatalogs);
 
 // --- Patient Management ---
 clinicalRouter.get(
@@ -60,21 +58,9 @@ clinicalRouter.post(
 );
 
 // --- Appointment Workflows ---
-clinicalRouter.get(
-    "/appointments",
-    ClinicalController.getAppointments
-);
-
-clinicalRouter.get(
-  "/appointments/:id",
-  ClinicalController.getAppointmentById
-);
-
-clinicalRouter.post(
-    "/appointments",
-    audit("CREATE", "appointment"),
-    ClinicalController.createAppointment
-);
+clinicalRouter.get("/appointments", ClinicalController.getAppointments);
+clinicalRouter.get("/appointments/:id", ClinicalController.getAppointmentById);
+clinicalRouter.post("/appointments", audit("CREATE", "appointment"), ClinicalController.createAppointment);
 
 clinicalRouter.post(
   "/appointments/:id/start",
@@ -90,7 +76,7 @@ clinicalRouter.post(
   ClinicalController.closeAppointment
 );
 
-// --- Patient Views (The 'Mine' endpoints) ---
+// --- Patient Views ---
 clinicalRouter.get(
   "/prescriptions/mine", 
   requireRole("PATIENT"),
@@ -106,8 +92,6 @@ clinicalRouter.get(
 );
 
 // --- Secure Document Access & AI ---
-
-// Securely get a temporary signed URL for a file
 clinicalRouter.get(
   "/documents/:id/access",
   audit("ACCESS", "document_file"),
@@ -116,7 +100,7 @@ clinicalRouter.get(
 
 clinicalRouter.get(
   "/documents/:id/ai",
-  aiLimiter, // Specific limit for AI retrieval
+  aiLimiter,
   audit("AI_ACCESS", "document_ai"),
   ClinicalController.getAIInsight
 );

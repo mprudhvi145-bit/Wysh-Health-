@@ -10,16 +10,22 @@ export const EmergencyService = {
         emergencyProfile: true,
         allergies: true,
         conditions: { where: { status: 'Active' } },
-        // Only return CRITICAL items
+        medications: { where: { status: 'ACTIVE' }, include: { items: true } } // Fetch active prescriptions
       }
     });
 
     if (!patient) throw new Error("Patient not found");
 
+    // Flatten Medications
+    const meds = patient.medications.flatMap(rx => 
+        rx.items.map(i => `${i.medicine} ${i.dosage}`)
+    );
+
     return {
       name: patient.user.name,
       avatar: patient.user.avatar,
       bloodGroup: patient.bloodGroup,
+      wyshId: patient.wyshId,
       emergencyContacts: {
         primary: patient.emergencyProfile?.primaryContact,
         relationship: patient.emergencyProfile?.primaryRel,
@@ -28,7 +34,8 @@ export const EmergencyService = {
       medicalAlerts: {
         allergies: patient.allergies.map(a => a.allergen),
         conditions: patient.conditions.map(c => c.diagnosis),
-        notes: patient.emergencyProfile?.instructions
+        notes: patient.emergencyProfile?.instructions,
+        currentMeds: meds
       }
     };
   },

@@ -1,24 +1,29 @@
 
 import { prisma } from '../../lib/prisma.js';
+import { CryptoLib } from '../../lib/crypto.js';
 import { randomUUID } from 'crypto';
 
 export const PatientService = {
   async getProfile(userId) {
-    return prisma.patient.findUnique({
+    const patient = await prisma.patient.findUnique({
       where: { userId },
       include: {
         user: { select: { name: true, email: true, phone: true, avatar: true } },
         emergencyProfile: true,
-        // Get latest vitals from observations
         encounters: {
             take: 1,
             orderBy: { startedAt: 'desc' },
-            include: {
-                observations: true
-            }
+            include: { observations: true }
         }
       }
     });
+
+    if (patient && patient.emergencyProfile && patient.emergencyProfile.instructions) {
+        // Decrypt on read
+        patient.emergencyProfile.instructions = CryptoLib.decrypt(patient.emergencyProfile.instructions);
+    }
+
+    return patient;
   },
 
   async getRecords(userId) {
@@ -38,8 +43,7 @@ export const PatientService = {
     const patient = await prisma.patient.findUnique({ where: { userId } });
     if (!patient) throw new Error("Patient not found");
 
-    // In a real app, upload to S3/GCS here. 
-    // We simulate by storing a fake URL or Data URI if small.
+    // In prod, encrypt the URL if it contains sensitive tokens, or encrypt file content
     const mockUrl = `https://storage.wysh.care/patients/${patient.id}/${randomUUID()}.pdf`;
 
     return prisma.document.create({
@@ -55,8 +59,6 @@ export const PatientService = {
 
   async hideRecord(userId, documentId) {
     const patient = await prisma.patient.findUnique({ where: { userId } });
-    
-    // Ensure ownership
     const doc = await prisma.document.findFirst({
         where: { id: documentId, patientId: patient.id }
     });
@@ -74,33 +76,34 @@ export const PatientService = {
     
     if (!doc) throw new Error("Document not found");
 
-    // Create a temporary access token (mock logic)
     const token = randomUUID();
     const expiresAt = new Date(Date.now() + durationMinutes * 60000);
 
-    // In a real system, store this token in a "ShareLink" table.
-    // For now, we return a signed URL structure.
     return {
         shareUrl: `${process.env.CLIENT_URL}/shared/view/${documentId}?token=${token}`,
         expiresAt,
-        otp: Math.floor(1000 + Math.random() * 9000).toString() // 4-digit OTP
+        otp: Math.floor(1000 + Math.random() * 9000).toString()
     };
   },
 
   async updateEmergencyProfile(userId, data) {
     const patient = await prisma.patient.findUnique({ where: { userId } });
+    
+    // Encrypt sensitive instructions
+    const encryptedInstructions = data.instructions ? CryptoLib.encrypt(data.instructions) : null;
+
     return prisma.emergencyProfile.upsert({
         where: { patientId: patient.id },
         create: {
             patientId: patient.id,
             primaryContact: data.primaryContact,
             secondaryContact: data.secondaryContact,
-            instructions: data.instructions
+            instructions: encryptedInstructions
         },
         update: {
             primaryContact: data.primaryContact,
             secondaryContact: data.secondaryContact,
-            instructions: data.instructions
+            instructions: encryptedInstructions
         }
     });
   }

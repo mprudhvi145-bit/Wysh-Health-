@@ -4,16 +4,13 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 import { GoogleGenAI } from '@google/genai';
-import { OAuth2Client } from 'google-auth-library';
-import jwt from 'jsonwebtoken';
 import multer from 'multer';
 
 // Observability Imports
 import { requestId } from './middleware/requestId.js';
 import { metricsMiddleware } from './middleware/metrics.js';
 import { log } from './lib/logger.js';
-import { metrics } from './lib/metrics.js';
-import { globalLimiter, authLimiter, aiLimiter } from './middleware/limiter.js';
+import { globalLimiter } from './middleware/limiter.js';
 
 // Bootstrap & Checks
 import { envCheck } from './bootstrap/envCheck.js';
@@ -25,7 +22,8 @@ import { abdmRouter } from './modules/abdm/routes.js';
 import { authRouter } from './modules/auth/routes.js'; 
 import { consentRouter } from './modules/consent/routes.js';
 import { emergencyRouter } from './modules/emergency/routes.js'; 
-import { patientRouter } from './modules/patient/routes.js'; // NEW
+import { patientRouter } from './modules/patient/routes.js';
+import { aiRouter } from './modules/ai/routes.js'; // NEW
 
 import { jwtAuthGuard } from './middleware/guards.js';
 import { errorHandler } from './middleware/error.js';
@@ -38,7 +36,6 @@ envCheck();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET;
 const ENABLE_AI = process.env.ENABLE_AI_INSIGHTS !== 'false';
 
 // Multer setup
@@ -98,7 +95,7 @@ app.get('/health', async (req, res) => {
 
 // --- API ROUTES ---
 
-// 1. Core Engine (Step 2)
+// 1. Core Engine
 app.use('/api/auth', authRouter);
 app.use('/api/consent', consentRouter);
 app.use('/api/emergency', emergencyRouter);
@@ -106,7 +103,8 @@ app.use('/api/emergency', emergencyRouter);
 // 2. Domain Modules
 app.use('/api/clinical', clinicalRouter);
 app.use('/api/abdm', abdmRouter);
-app.use('/api/patient', patientRouter); // NEW: Patient Portal
+app.use('/api/patient', patientRouter);
+app.use('/api/ai', aiRouter); // Registered under new path
 
 // Audit Endpoint
 app.get('/api/audit/mine', jwtAuthGuard, (req, res) => {
@@ -114,51 +112,12 @@ app.get('/api/audit/mine', jwtAuthGuard, (req, res) => {
   res.json({ data: logs });
 });
 
-// --- AI ROUTES (Protected) ---
-const aiRouter = express.Router();
-aiRouter.use(jwtAuthGuard);
-aiRouter.use(aiLimiter);
-
-const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
-
-aiRouter.post('/health-insight', async (req, res) => {
-  if (!ENABLE_AI) return res.status(403).json({ error: "AI Features Disabled" });
-  if (!ai) return res.status(503).json({ error: 'AI Service Unavailable' });
-  try {
-    const { prompt } = req.body;
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-    AuditService.log(req.user.id, 'GENERATE_INSIGHT', 'gemini_flash');
-    res.json({ text: response.text });
-  } catch (err) {
-    res.status(500).json({ error: 'AI Error' });
-  }
-});
-
-aiRouter.post('/document-extract', upload.single('file'), async (req, res) => {
-  if (!ENABLE_AI || !ai) return res.status(503).json({ error: 'AI Service Unavailable' });
-  try {
-    const file = req.file;
-    if (!file) return res.status(400).json({ error: 'No file' });
-    const base64 = file.buffer.toString('base64');
-    const prompt = `Extract medical data (summary, diagnosis, medications, labs) in JSON from this ${req.body.documentType}.`;
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ inlineData: { mimeType: file.mimetype, data: base64 } }, { text: prompt }],
-      config: { responseMimeType: 'application/json' }
-    });
-    let jsonStr = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
-    AuditService.log(req.user.id, 'EXTRACT_DOC_DATA', `doc_type:${req.body.documentType}`);
-    res.json({ success: true, data: JSON.parse(jsonStr) });
-  } catch (err) {
-    res.status(500).json({ error: 'Extraction Failed' });
-  }
-});
-
-app.use('/api/ai', aiRouter);
+// Legacy/Direct AI Routes (Keep for backward compat or deprecate)
+// aiRouter handles /health-insight internally now if moved, 
+// but we keep the direct definition here for document-extract to use upload middleware easily in one place if not refactored.
+// Actually, let's keep document-extract here for simplicity of the upload middleware binding
+// or move it to aiRouter if we pass upload middleware there.
+// For Step 5, we use the new `aiRouter` for logic.
 
 // Final Error Handler
 app.use(errorHandler);
