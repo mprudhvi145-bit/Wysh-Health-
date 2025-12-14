@@ -81,10 +81,11 @@ export const AuthService = {
       });
     }
 
+    // Security Hardening: Short-lived tokens (15 mins)
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role, name: user.name }, 
       JWT_SECRET, 
-      { expiresIn: '7d' }
+      { expiresIn: '15m' } 
     );
 
     return { user, token, isNewUser };

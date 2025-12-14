@@ -11,6 +11,7 @@ import { requestId } from './middleware/requestId.js';
 import { metricsMiddleware } from './middleware/metrics.js';
 import { log } from './lib/logger.js';
 import { globalLimiter } from './middleware/limiter.js';
+import { maintenanceGuard } from './middleware/maintenance.js'; // NEW
 
 // Bootstrap & Checks
 import { envCheck } from './bootstrap/envCheck.js';
@@ -23,7 +24,7 @@ import { authRouter } from './modules/auth/routes.js';
 import { consentRouter } from './modules/consent/routes.js';
 import { emergencyRouter } from './modules/emergency/routes.js'; 
 import { patientRouter } from './modules/patient/routes.js';
-import { aiRouter } from './modules/ai/routes.js'; // NEW
+import { aiRouter } from './modules/ai/routes.js'; 
 
 import { jwtAuthGuard } from './middleware/guards.js';
 import { errorHandler } from './middleware/error.js';
@@ -76,6 +77,9 @@ app.use(cors({
   credentials: true
 }));
 
+// Apply Kill-Switch (After CORS, before Routes)
+app.use(maintenanceGuard);
+
 // --- SYSTEM ROUTES ---
 app.get('/health', async (req, res) => {
     const health = {
@@ -104,20 +108,13 @@ app.use('/api/emergency', emergencyRouter);
 app.use('/api/clinical', clinicalRouter);
 app.use('/api/abdm', abdmRouter);
 app.use('/api/patient', patientRouter);
-app.use('/api/ai', aiRouter); // Registered under new path
+app.use('/api/ai', aiRouter); 
 
 // Audit Endpoint
 app.get('/api/audit/mine', jwtAuthGuard, (req, res) => {
   const logs = AuditService.listByActor(req.user.id);
   res.json({ data: logs });
 });
-
-// Legacy/Direct AI Routes (Keep for backward compat or deprecate)
-// aiRouter handles /health-insight internally now if moved, 
-// but we keep the direct definition here for document-extract to use upload middleware easily in one place if not refactored.
-// Actually, let's keep document-extract here for simplicity of the upload middleware binding
-// or move it to aiRouter if we pass upload middleware there.
-// For Step 5, we use the new `aiRouter` for logic.
 
 // Final Error Handler
 app.use(errorHandler);
