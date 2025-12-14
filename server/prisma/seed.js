@@ -14,7 +14,7 @@ async function main() {
       email: "doctor@wysh.demo",
       name: "Dr. Sarah Chen",
       role: "DOCTOR",
-      password: "password", 
+      password: "password", // In prod, hash this
       avatar: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300",
       isActive: true
     },
@@ -91,17 +91,18 @@ async function main() {
     },
   });
 
-  // 5. SOAP Notes (New Schema)
-  await prisma.sOAPNote.createMany({
-    data: [
-      { encounterId: encounter.id, section: "SUBJECTIVE", content: "Patient reports mild palpitations after exercise." },
-      { encounterId: encounter.id, section: "OBJECTIVE", content: "BP 120/80. HR 72 regular. No murmurs." },
-      { encounterId: encounter.id, section: "ASSESSMENT", content: "Stable sinus rhythm. Controlled arrhythmia." },
-      { encounterId: encounter.id, section: "PLAN", content: "Continue current beta-blocker therapy. Follow up in 3 months." }
-    ]
+  // 5. SOAP Notes (Aligned with new Schema)
+  await prisma.sOAPNote.create({
+    data: {
+      encounterId: encounter.id,
+      subjective: "Patient reports mild palpitations after exercise.",
+      objective: "BP 120/80. HR 72 regular. No murmurs.",
+      assessment: "Stable sinus rhythm. Controlled arrhythmia.",
+      plan: "Continue current beta-blocker therapy. Follow up in 3 months."
+    }
   });
 
-  // 6. Legacy Note Support (for current UI compatibility)
+  // 6. Legacy Note Support
   await prisma.clinicalNote.create({
     data: {
       patientId: patient.id,
@@ -152,7 +153,7 @@ async function main() {
     }
   });
 
-  // 9. Observations (Vitals)
+  // 9. Vitals (Observations)
   await prisma.observation.create({
     data: {
       encounterId: encounter.id,

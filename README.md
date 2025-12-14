@@ -1,114 +1,113 @@
-# Wysh Care - The Future of Healthcare OS
 
-Wysh Care is a next-generation healthcare platform ("Neo-Clinical OS") designed to unify Telemedicine, Electronic Health Records (EHR), and AI-driven medical logistics into a single, futuristic interface.
+# Wysh Care - Neo-Clinical OS
 
-![Wysh Care Hero](https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=2070&auto=format&fit=crop)
+**Wysh Care** is a production-grade Healthcare Operating System designed to replace legacy EMRs with a unified, patient-owned, and AI-assisted platform. It strictly adheres to India's **ABDM (Ayushman Bharat Digital Mission)** standards for interoperability and data consent.
 
-## 🌟 Vision
-
-To replace fragmented legacy hospital systems with a cohesive, AI-first operating system that empowers doctors, patients, and administrators.
-
-## 🚀 Key Features
-
-### 1. **Telemedicine 2.0**
-*   **Holographic-style UI**: Glassmorphism design language for a futuristic feel.
-*   **Instant Booking**: Seamless appointment scheduling with blockchain-grade security simulation.
-*   **Doctor Directory**: Advanced filtering by specialty, availability, and rating.
-
-### 2. **AI Health Intelligence**
-*   **Wysh AI Assistant**: Powered by Gemini 2.5 Flash, offering real-time medical insights and conversational support.
-*   **Predictive Diagnostics**: Visual risk modeling for cardiac, respiratory, and metabolic health.
-*   **ECG Analysis**: Client-side simulation of AI-driven arrhythmia detection.
-
-### 3. **Role-Based Dashboards**
-*   **Patient Portal**: View upcoming appointments, vitals history, and AI health summaries.
-*   **Clinician View**: Manage patient queues, toggle availability status, and review patient records.
-
-### 4. **Immersive Experience**
-*   **3D Visualizations**: Interactive DNA helices and holographic organ models using Three.js.
-*   **Real-time Vitals**: Simulated WebSocket feeds for heart rate and temperature monitoring.
-
-## 🛠 Tech Stack
-
-*   **Frontend**: React 18, TypeScript, Tailwind CSS
-*   **Backend**: Node.js, Express (AI Proxy)
-*   **AI Engine**: Google Gemini API (@google/genai)
-*   **Visuals**: Three.js, Recharts, Lucide React
-*   **Routing**: React Router v6
-*   **State Management**: React Context API
-
-## 📦 Project Structure
-
-```
-src/
-├── components/       # Reusable UI components
-├── features/         # Feature-based modules
-├── pages/            # Top-level route pages
-├── services/         # Frontend services (API, Mock, AI)
-server/               # Node.js AI Proxy Server
-```
-
-## 🔧 Setup & Installation
-
-1.  **Clone the repository**
-    ```bash
-    git clone https://github.com/wyshcare/wysh-care-os.git
-    cd wysh-care-os
-    ```
-
-2.  **Install Frontend dependencies**
-    ```bash
-    npm install
-    ```
-
-3.  **Install Backend dependencies**
-    ```bash
-    cd server
-    npm install
-    cd ..
-    ```
-
-4.  **Environment Configuration**
-    
-    Create a `.env` file in the **server/** directory:
-    ```env
-    API_KEY=your_google_gemini_api_key
-    PORT=3001
-    CLIENT_URL=http://localhost:3000
-    ```
-
-5.  **Run Application**
-    
-    Terminal 1 (Backend):
-    ```bash
-    cd server
-    npm run dev
-    ```
-
-    Terminal 2 (Frontend):
-    ```bash
-    npm run dev
-    ```
-
-## 🚢 Deployment
-
-**Production Build**
-```bash
-npm run build
-```
-
-**Checklist:**
-- [x] Environment variables configured
-- [x] Error boundaries active
-- [x] Backend proxy secured
-- [x] Assets optimized
-
-## 🗺 Roadmap
-
-*   **Q3 2024**: Integration with real FHIR servers.
-*   **Q4 2024**: Mobile app release (React Native).
-*   **Q1 2025**: WebRTC Video Calls integration.
+![Architecture Status](https://img.shields.io/badge/Architecture-Monorepo-blue)
+![Compliance](https://img.shields.io/badge/Compliance-ABDM%20%7C%20HIPAA%20%7C%20DPDP-green)
+![Tech Stack](https://img.shields.io/badge/Stack-React%20%7C%20Node%20%7C%20Prisma%20%7C%20PostgreSQL-teal)
 
 ---
 
-© 2024 Wysh Group. Built for the future.
+## 🏛 System Architecture
+
+The repository is structured as a Monorepo containing the Frontend Application and the Microservices-ready Backend.
+
+```
+wysh-care/
+├── apps/frontend (src/)    # Next-gen React Interface (Patient & Doctor Portals)
+├── server/                 # Core EMR Backend (Node.js/Express/Prisma)
+└── infra/                  # Docker & Deployment Configs
+```
+
+### Key Modules
+
+1.  **Core EMR Engine**: Manages Patients, Encounters, Clinical Notes (SOAP), and Prescriptions using a relational PostgreSQL schema.
+2.  **Auth & Identity**: Role-based access (RBAC) with JWT and OTP support. Handles **Wysh ID** generation.
+3.  **ABDM Adapter**: Implements FHIR R4 mapping, Consent Artefact signing, and encrypted data flow with the National Health Stack.
+4.  **AI Service**: Integration with **Google Gemini 2.5** for Clinical Decision Support (CDSS) and Document Extraction (OCR/NER).
+5.  **Emergency Layer**: High-availability, read-only public access points for paramedics via QR code.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+*   Node.js v18+
+*   PostgreSQL v14+ (or Docker)
+*   Google Gemini API Key
+
+### 1. Database Setup
+Start a local PostgreSQL instance and configure the connection string in `server/.env`.
+
+```bash
+cd server
+cp .env.example .env
+# Edit DATABASE_URL in .env
+```
+
+### 2. Backend Initialization
+Install dependencies, push the schema to the DB, and seed initial clinical data.
+
+```bash
+cd server
+npm install
+npx prisma db push
+npm run db:seed
+npm run dev
+```
+*The backend runs on http://localhost:3001*
+
+### 3. Frontend Initialization
+Launch the React application.
+
+```bash
+# In project root
+npm install
+npm run dev
+```
+*The frontend runs on http://localhost:3000*
+
+---
+
+## 🔐 Security & Compliance
+
+### 1. Zero Trust Access
+*   **Consent Guard**: No doctor can view patient records without an active, time-bound consent or a scheduled appointment.
+*   **Audit Trail**: Every read/write action is logged immutably in the `AccessLog` table.
+
+### 2. Data Safety
+*   **Encryption**: Sensitive fields (e.g., Emergency Instructions) are encrypted at rest using AES-256.
+*   **Soft Deletes**: Clinical records are never hard-deleted to maintain legal history.
+
+### 3. AI Safety
+*   **Circuit Breakers**: AI services are wrapped in circuit breakers to prevent cascading failures.
+*   **Human-in-the-Loop**: AI outputs (Prescription extraction, Summaries) are marked as `draft` and require doctor approval.
+
+---
+
+## 🩺 Clinical Workflows
+
+### Doctor Console
+1.  **Patient Search**: Lookup via Name or Wysh ID.
+2.  **Encounter**: Start a visit -> Write SOAP Notes -> Order Labs -> Issue Prescription -> Close Visit.
+3.  **Dashboard**: View daily schedule and patient queue.
+
+### Patient Portal
+1.  **Timeline**: View longitudinal health history (internal + external ABDM records).
+2.  **Documents**: Upload PDF reports for AI analysis.
+3.  **Consent Ledger**: Approve/Revoke doctor access.
+4.  **Emergency**: Configure emergency contacts and view QR code.
+
+---
+
+## ⚠️ Known Risks & TODOs
+
+1.  **ABDM Sandbox**: The ABDM integration currently points to a mocked Gateway (`server/modules/abdm/gateway.js`). For production, strict ECDH key exchange and signature verification must be enabled in `server/lib/abdm_crypto.js`.
+2.  **Video Calls**: Telemedicine links utilize Jitsi Meet public servers. For privacy compliance, a self-hosted Jitsi/Twilio instance is required.
+3.  **File Storage**: Document uploads currently use memory/base64 or local temp URLs. Production must use S3/GCS presigned URLs.
+4.  **Rate Limiting**: Current limits are generous. Stricter per-IP limits needed for the Emergency endpoint.
+
+---
+
+© 2024 Wysh Group. Built for the Future of Healthcare.

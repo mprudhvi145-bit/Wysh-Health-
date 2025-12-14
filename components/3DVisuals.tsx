@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
@@ -34,8 +35,8 @@ export const DNAHelix: React.FC<{ className?: string }> = React.memo(({ classNam
       // Resources
       const particleGeo = new THREE.SphereGeometry(0.12, 8, 8);
       const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1 });
-      const mat1 = new THREE.MeshBasicMaterial({ color: 0x4D8B83 }); // Teal
-      const mat2 = new THREE.MeshBasicMaterial({ color: 0x8763FF }); // Purple
+      const mat1 = new THREE.MeshBasicMaterial({ color: 0x45A29E }); // Teal
+      const mat2 = new THREE.MeshBasicMaterial({ color: 0x8860D0 }); // Purple
 
       const particlesCount = 80;
       for (let i = 0; i < particlesCount; i++) {
@@ -157,14 +158,14 @@ export const HolographicModel: React.FC = React.memo(() => {
 
             const coreGeo = new THREE.IcosahedronGeometry(2, 2);
             const coreMat = new THREE.MeshBasicMaterial({ 
-                color: 0x4D8B83, wireframe: true, transparent: true, opacity: 0.3 
+                color: 0x45A29E, wireframe: true, transparent: true, opacity: 0.3 
             });
             sphere = new THREE.Mesh(coreGeo, coreMat);
             scene.add(sphere);
 
             const innerGeo = new THREE.IcosahedronGeometry(1.5, 1);
             const innerMat = new THREE.MeshBasicMaterial({
-                color: 0x8763FF, wireframe: true, transparent: true, opacity: 0.1
+                color: 0x8860D0, wireframe: true, transparent: true, opacity: 0.1
             });
             innerSphere = new THREE.Mesh(innerGeo, innerMat);
             scene.add(innerSphere);
@@ -177,7 +178,7 @@ export const HolographicModel: React.FC = React.memo(() => {
             }
             particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
             const particlesMat = new THREE.PointsMaterial({
-                size: 0.05, color: 0x7EC4BD, transparent: true, opacity: 0.8
+                size: 0.05, color: 0x66FCF1, transparent: true, opacity: 0.8
             });
             particlesMesh = new THREE.Points(particlesGeo, particlesMat);
             scene.add(particlesMesh);
@@ -260,13 +261,13 @@ export const NeuralGrid: React.FC = React.memo(() => {
         // Create dots based on initial size
         const initDots = () => {
             dots.length = 0;
-            const count = Math.min(60, Math.floor((w * h) / 15000)); // Responsive count
+            const count = Math.min(50, Math.floor((w * h) / 20000)); // Reduced density for premium feel
             for(let i=0; i<count; i++) {
                 dots.push({
                     x: Math.random() * w,
                     y: Math.random() * h,
-                    vx: (Math.random() - 0.5) * 0.5,
-                    vy: (Math.random() - 0.5) * 0.5
+                    vx: (Math.random() - 0.5) * 0.3,
+                    vy: (Math.random() - 0.5) * 0.3
                 });
             }
         };
@@ -274,8 +275,9 @@ export const NeuralGrid: React.FC = React.memo(() => {
 
         const animate = () => {
             ctx.clearRect(0,0,w,h);
-            ctx.fillStyle = 'rgba(77, 139, 131, 0.5)';
-            ctx.strokeStyle = 'rgba(77, 139, 131, 0.1)';
+            // Subtle Teal tint
+            ctx.fillStyle = 'rgba(69, 162, 158, 0.4)'; 
+            ctx.strokeStyle = 'rgba(69, 162, 158, 0.08)';
 
             dots.forEach((dot, i) => {
                 dot.x += dot.vx;
@@ -285,7 +287,7 @@ export const NeuralGrid: React.FC = React.memo(() => {
                 if(dot.y < 0 || dot.y > h) dot.vy *= -1;
 
                 ctx.beginPath();
-                ctx.arc(dot.x, dot.y, 1.5, 0, Math.PI*2);
+                ctx.arc(dot.x, dot.y, 1.2, 0, Math.PI*2);
                 ctx.fill();
 
                 for(let j=i+1; j<dots.length; j++) {
@@ -306,7 +308,6 @@ export const NeuralGrid: React.FC = React.memo(() => {
             if (canvas) {
                 w = canvas.width = window.innerWidth;
                 h = canvas.height = window.innerHeight;
-                // Optional: re-init dots or just let them bound around new dims
             }
         }
 
@@ -320,5 +321,5 @@ export const NeuralGrid: React.FC = React.memo(() => {
 
     }, []);
 
-    return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0 opacity-40" />;
+    return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0 opacity-20" />;
 });
