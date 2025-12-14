@@ -4,57 +4,51 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Starting Wysh Care Seed...");
+  console.log("🌱 Starting Wysh Care Data Foundation Seed...");
 
-  // 1. Cleanup (Optional: use with caution in prod)
-  // await prisma.prescriptionItem.deleteMany();
-  // await prisma.clinicalNote.deleteMany();
-  
-  // 2. USERS
+  // 1. Create Users
   const doctorUser = await prisma.user.upsert({
     where: { email: "doctor@wysh.demo" },
     update: {},
     create: {
       email: "doctor@wysh.demo",
-      name: "Dr. Aarav Mehta",
+      name: "Dr. Sarah Chen",
       role: "DOCTOR",
-      provider: "WYSH",
-      password: "password", // In real app, this should be hashed
-      avatar: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=300"
+      password: "password", 
+      avatar: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300",
+      isActive: true
     },
   });
 
   const patientUser = await prisma.user.upsert({
     where: { email: "patient@wysh.demo" },
     update: {
-      abhaAddress: "rohan@abdm",
+      abhaAddress: "alex.doe@abdm",
       abhaLinked: true,
       abhaLinkedAt: new Date(),
     },
     create: {
       email: "patient@wysh.demo",
-      name: "Rohan Sharma",
+      name: "Alex Doe",
       role: "PATIENT",
-      provider: "WYSH",
       password: "password",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300",
-      abhaAddress: "rohan@abdm",
+      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200",
+      abhaAddress: "alex.doe@abdm",
       abhaLinked: true,
       abhaLinkedAt: new Date(),
+      isActive: true
     },
   });
 
-  console.log("✅ Users seeded");
-
-  // 3. PROFILES
+  // 2. Profiles
   const doctor = await prisma.doctor.upsert({
     where: { userId: doctorUser.id },
     update: {},
     create: {
       userId: doctorUser.id,
-      specialty: "General Physician",
+      specialty: "Cardiology",
       experienceYears: 12,
-      licenseNumber: "MED-IND-8842"
+      licenseNumber: "MED-CA-9921"
     },
   });
 
@@ -63,141 +57,133 @@ async function main() {
     update: {},
     create: {
       userId: patientUser.id,
-      gender: "Male",
-      phone: "+91 98765 43210",
-      dob: new Date("1990-05-15")
+      wyshId: "WYSH-IND-9X82K",
+      gender: "MALE",
+      dob: new Date("1990-05-20"),
+      bloodGroup: "O+"
     },
   });
 
-  console.log("✅ Profiles seeded");
+  // 3. Emergency Profile
+  await prisma.emergencyProfile.upsert({
+    where: { patientId: patient.id },
+    update: {},
+    create: {
+      patientId: patient.id,
+      primaryContact: "+1 (555) 019-2834",
+      primaryRel: "Spouse",
+      instructions: "Patient has history of arrhythmia. Verify meds."
+    }
+  });
 
-  // 4. CLINICAL ENCOUNTER
+  console.log("✅ Identity & Profiles seeded");
+
+  // 4. Clinical Encounter
   const encounter = await prisma.encounter.create({
     data: {
       patientId: patient.id,
       doctorId: doctor.id,
-      scheduledAt: new Date(), // Today
+      type: "TELECONSULT",
       status: "COMPLETED",
-      type: "video"
+      scheduledAt: new Date(),
+      startedAt: new Date(),
+      endedAt: new Date()
     },
   });
 
-  // 5. SOAP NOTE
-  await prisma.clinicalNote.create({
-    data: {
-      encounterId: encounter.id,
-      patientId: patient.id,
-      doctorId: doctor.id,
-      content: `Subjective: Patient reports moderate fever (101°F) and fatigue for 2 days. No breathing difficulty.\n\nObjective: Throat slightly inflamed. Lungs clear. Vitals stable.\n\nAssessment: Suspected Viral Fever.\n\nPlan: Prescribed antipyretics and hydration. Review in 3 days if symptoms persist.`,
-      shared: true,
-    },
-  });
-
-  // 6. PRESCRIPTION
-  const rx = await prisma.prescription.create({
-    data: {
-      encounterId: encounter.id,
-      patientId: patient.id,
-      doctorId: doctor.id,
-      notes: "Take after meals. Maintain hydration.",
-    },
-  });
-
-  await prisma.prescriptionItem.createMany({
+  // 5. SOAP Notes (New Schema)
+  await prisma.sOAPNote.createMany({
     data: [
-      {
-        prescriptionId: rx.id,
-        medicine: "Dolo 650",
-        dosage: "650mg",
-        frequency: "SOS",
-        duration: "3 days",
-      },
-      {
-        prescriptionId: rx.id,
-        medicine: "Vitamin C",
-        dosage: "500mg",
-        frequency: "OD",
-        duration: "10 days",
-      }
-    ],
-  });
-
-  // 7. LAB ORDER
-  await prisma.labOrder.create({
-    data: {
-      encounterId: encounter.id,
-      patientId: patient.id,
-      doctorId: doctor.id,
-      status: "COMPLETED",
-      tests: ["Complete Blood Count (CBC)", "Dengue NS1 Antigen"],
-      priority: "Routine"
-    },
-  });
-
-  // 8. VITALS
-  await prisma.vital.createMany({
-    data: [
-      {
-        patientId: patient.id,
-        type: "Temperature",
-        value: "100.4",
-        unit: "F",
-        recordedAt: new Date()
-      },
-      {
-        patientId: patient.id,
-        type: "SpO2",
-        value: "98",
-        unit: "%",
-        recordedAt: new Date()
-      }
+      { encounterId: encounter.id, section: "SUBJECTIVE", content: "Patient reports mild palpitations after exercise." },
+      { encounterId: encounter.id, section: "OBJECTIVE", content: "BP 120/80. HR 72 regular. No murmurs." },
+      { encounterId: encounter.id, section: "ASSESSMENT", content: "Stable sinus rhythm. Controlled arrhythmia." },
+      { encounterId: encounter.id, section: "PLAN", content: "Continue current beta-blocker therapy. Follow up in 3 months." }
     ]
   });
 
-  // 9. ALLERGIES & PROBLEMS
-  await prisma.allergy.create({
+  // 6. Legacy Note Support (for current UI compatibility)
+  await prisma.clinicalNote.create({
     data: {
       patientId: patient.id,
-      allergen: "Sulfa Drugs",
-      reaction: "Skin Rash",
-      severity: "Moderate"
-    },
-  });
-
-  await prisma.problem.create({
-    data: {
-      patientId: patient.id,
-      diagnosis: "Viral Pyrexia",
-      status: "Active",
-      onsetDate: new Date()
+      doctorId: doctor.id,
+      encounterId: encounter.id,
+      content: "SOAP Note summary: Stable arrhythmia. Continue meds.",
+      shared: true
     }
   });
 
-  console.log("✅ Clinical records seeded");
-
-  // 10. ABDM CONSENT
-  // Seed a pre-granted consent to simulate "Import External Records" flow
-  await prisma.abdmConsent.create({
+  // 7. Prescription
+  const rx = await prisma.prescription.create({
     data: {
-      patientUserId: patientUser.id,
       patientId: patient.id,
-      consentId: "CONSENT-DEMO-" + Math.floor(Math.random() * 10000),
-      purpose: "Care Management",
-      dataScope: "Prescription,DiagnosticReport",
-      hipName: "Max Super Specialty Hospital",
-      status: "GRANTED",
-      dateGranted: new Date(),
-      expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
+      doctorId: doctor.id,
+      encounterId: encounter.id,
+      notes: "Take with food.",
+      status: "ACTIVE"
     },
   });
 
-  console.log("✅ ABDM Consents seeded");
-  console.log("🚀 Seed completed successfully!");
+  await prisma.prescriptionItem.create({
+    data: {
+      prescriptionId: rx.id,
+      medicine: "Metoprolol",
+      dosage: "50mg",
+      frequency: "Twice Daily",
+      duration: "30 Days"
+    }
+  });
+
+  // 8. Longitudinal Records
+  await prisma.condition.create({
+    data: {
+      patientId: patient.id,
+      diagnosis: "Cardiac Arrhythmia",
+      status: "Active",
+      onsetDate: new Date("2023-01-15")
+    }
+  });
+
+  await prisma.allergy.create({
+    data: {
+      patientId: patient.id,
+      allergen: "Peanuts",
+      severity: "Severe",
+      reaction: "Anaphylaxis"
+    }
+  });
+
+  // 9. Observations (Vitals)
+  await prisma.observation.create({
+    data: {
+      encounterId: encounter.id,
+      patientId: patient.id,
+      name: "Heart Rate",
+      value: "72",
+      unit: "bpm"
+    }
+  });
+
+  // 10. Consent (ABDM)
+  await prisma.consent.create({
+    data: {
+      consentId: "CONSENT-DEMO-" + Math.floor(Math.random() * 10000),
+      patientId: patient.id,
+      patientUserId: patientUser.id,
+      purpose: "Care Management",
+      hipName: "Apollo Hospital",
+      status: "GRANTED",
+      dataScope: "LAB_REPORTS,PRESCRIPTIONS",
+      validFrom: new Date(),
+      validTo: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+    }
+  });
+
+  console.log("✅ Clinical Data Foundation seeded");
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Seed failed:", e);
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {
