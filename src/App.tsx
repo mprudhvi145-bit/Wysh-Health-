@@ -8,7 +8,6 @@ import { Investor } from './pages/Investor';
 import { Contact } from './pages/Contact';
 import { Team } from './pages/Team';
 import { Legal } from './pages/Legal'; 
-import { Pricing } from './pages/Pricing'; // New Page
 import { Products } from './pages/Products';
 import { EMRProduct } from './pages/products/EMRProduct';
 import { ABDMProduct } from './pages/products/ABDMProduct';
@@ -38,7 +37,7 @@ import { AIInsights } from './features/patient/pages/AIInsights';
 import { AbhaManager } from './features/patient/pages/AbhaManager';
 import { EmergencyAccess } from './features/patient/pages/EmergencyAccess';
 import { EmergencyPublic } from './pages/EmergencyPublic';
-import { SystemHealth } from './pages/admin/SystemHealth'; 
+import { SystemHealth } from './pages/admin/SystemHealth'; // NEW
 
 const App: React.FC = () => {
   return (
@@ -61,7 +60,6 @@ const App: React.FC = () => {
                             <Route path="/contact" element={<Contact />} />
                             <Route path="/team" element={<Team />} />
                             <Route path="/legal" element={<Legal />} />
-                            <Route path="/pricing" element={<Pricing />} />
                             
                             {/* Product Suite */}
                             <Route path="/products" element={<Products />} />
