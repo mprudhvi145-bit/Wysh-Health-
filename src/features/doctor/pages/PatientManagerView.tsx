@@ -129,9 +129,9 @@ export const PatientManagerView: React.FC<PatientManagerViewProps> = ({
                 <div className="flex border-b border-white/10 px-6 bg-black/20 overflow-x-auto">
                   {[
                     { key: 'overview', label: 'Overview' },
+                    { key: 'notes', label: 'SOAP Notes' }, // Reordered
                     { key: 'rx', label: 'Prescriptions' },
-                    { key: 'labs', label: 'Labs' },
-                    { key: 'notes', label: 'Notes' },
+                    { key: 'labs', label: 'Lab Orders' },
                     { key: 'docs', label: 'Documents' }
                   ].map(tab => (
                     <button
