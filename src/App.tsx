@@ -37,7 +37,8 @@ import { AIInsights } from './features/patient/pages/AIInsights';
 import { AbhaManager } from './features/patient/pages/AbhaManager';
 import { EmergencyAccess } from './features/patient/pages/EmergencyAccess';
 import { EmergencyPublic } from './pages/EmergencyPublic';
-import { SystemHealth } from './pages/admin/SystemHealth'; // NEW
+import { SystemHealth } from './pages/admin/SystemHealth';
+import { PilotHandbooks } from './pages/resources/PilotHandbooks'; // NEW
 
 const App: React.FC = () => {
   return (
@@ -69,6 +70,9 @@ const App: React.FC = () => {
                             <Route path="/products/abdm" element={<ABDMProduct />} />
                             <Route path="/products/how-it-works" element={<HowItWorks />} />
                             
+                            {/* Resources */}
+                            <Route path="/resources/pilot-handbooks" element={<PilotHandbooks />} />
+
                             {/* Doctors Public */}
                             <Route path="/doctors" element={<DoctorDirectory />} />
                             <Route path="/doctors/:id" element={<DoctorProfile />} />

@@ -88,7 +88,7 @@ export const Button: React.FC<{
   );
 };
 
-export const Badge: React.FC<{ children: React.ReactNode; color?: 'teal' | 'purple' | 'red' | 'green' | 'warning' }> = ({ children, color = 'teal' }) => {
+export const Badge: React.FC<{ children: React.ReactNode; color?: 'teal' | 'purple' | 'red' | 'green' | 'warning'; className?: string }> = ({ children, color = 'teal', className = '' }) => {
   const colors = {
     teal: "bg-teal/10 text-teal-glow border-teal/20 shadow-[0_0_10px_rgba(69,162,158,0.2)]",
     purple: "bg-purple/10 text-purple-light border-purple/20 shadow-[0_0_10px_rgba(136,96,208,0.2)]",
@@ -98,7 +98,7 @@ export const Badge: React.FC<{ children: React.ReactNode; color?: 'teal' | 'purp
   };
 
   return (
-    <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold font-mono uppercase tracking-wider border ${colors[color]}`}>
+    <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold font-mono uppercase tracking-wider border ${colors[color]} ${className}`}>
       {children}
     </span>
   );
