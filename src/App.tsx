@@ -7,7 +7,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Investor } from './pages/Investor';
 import { Contact } from './pages/Contact';
 import { Team } from './pages/Team';
-import { Legal } from './pages/Legal'; // New
+import { Legal } from './pages/Legal'; 
 import { Products } from './pages/Products';
 import { EMRProduct } from './pages/products/EMRProduct';
 import { ABDMProduct } from './pages/products/ABDMProduct';
@@ -26,7 +26,7 @@ import { AppointmentListPage } from './features/appointments/pages/AppointmentLi
 import { AppointmentDetail } from './features/appointments/pages/AppointmentDetail';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { HealthRecords } from './features/patient/pages/HealthRecords';
-import { SecurityPage } from './features/security/SecurityPage'; // New
+import { SecurityPage } from './features/security/SecurityPage'; 
 import { PatientManager } from './features/doctor/pages/PatientManager';
 import { ScheduleManager } from './features/doctor/pages/ScheduleManager';
 import { ProfilePage } from './features/profile/ProfilePage';
@@ -37,6 +37,7 @@ import { AIInsights } from './features/patient/pages/AIInsights';
 import { AbhaManager } from './features/patient/pages/AbhaManager';
 import { EmergencyAccess } from './features/patient/pages/EmergencyAccess';
 import { EmergencyPublic } from './pages/EmergencyPublic';
+import { SystemHealth } from './pages/admin/SystemHealth'; // NEW
 
 const App: React.FC = () => {
   return (
@@ -136,6 +137,13 @@ const App: React.FC = () => {
                             <Route path="/security" element={
                                 <ProtectedRoute>
                                     <SecurityPage />
+                                </ProtectedRoute>
+                            } />
+
+                            {/* Admin Route */}
+                            <Route path="/admin/system" element={
+                                <ProtectedRoute>
+                                    <SystemHealth />
                                 </ProtectedRoute>
                             } />
 

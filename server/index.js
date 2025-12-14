@@ -16,6 +16,7 @@ import { maintenanceGuard } from './middleware/maintenance.js';
 // Bootstrap & Checks
 import { envCheck } from './bootstrap/envCheck.js';
 import { prisma } from './lib/prisma.js';
+import { initConsumers } from './modules/events/consumers.js'; // NEW
 
 // Modules
 import { clinicalRouter } from './modules/clinical/routes.js';
@@ -26,14 +27,20 @@ import { emergencyRouter } from './modules/emergency/routes.js';
 import { patientRouter } from './modules/patient/routes.js';
 import { aiRouter } from './modules/ai/routes.js'; 
 
-import { jwtAuthGuard } from './middleware/guards.js';
+import { jwtAuthGuard, roleGuard } from './middleware/guards.js'; // Updated import
 import { errorHandler } from './middleware/error.js';
 import { AuditService } from './modules/audit/service.js';
+import { CacheService } from './lib/cache.js'; // NEW
+import { getAllBreakerStats } from './lib/circuitBreaker.js'; // NEW
+import { metrics } from './lib/metrics.js'; // NEW
 
 dotenv.config();
 
 // 1. Fail-fast
 envCheck();
+
+// 2. Init Async Workers
+initConsumers();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -113,6 +120,16 @@ app.get('/health', async (req, res) => {
         health.db = 'disconnected';
     }
     res.json(health);
+});
+
+// --- ADMIN SYSTEM STATUS (NEW) ---
+app.get('/api/admin/system', jwtAuthGuard, roleGuard('admin'), (req, res) => {
+    res.json({
+        metrics: metrics.snapshot(),
+        cache: CacheService.getStats(),
+        circuitBreakers: getAllBreakerStats(),
+        environment: process.env.NODE_ENV
+    });
 });
 
 // --- API ROUTES ---

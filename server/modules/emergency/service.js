@@ -1,8 +1,15 @@
 
 import { prisma } from '../../lib/prisma.js';
+import { CacheService } from '../../lib/cache.js';
+import { EventBus, EVENTS } from '../../lib/events.js';
 
 export const EmergencyService = {
   async getProfile(wyshId) {
+    // 1. Aggressive Caching for Emergency Read (Critical Path)
+    const cacheKey = `emergency:${wyshId}`;
+    const cached = await CacheService.get(cacheKey);
+    if (cached) return cached;
+
     const patient = await prisma.patient.findUnique({
       where: { wyshId },
       include: {
@@ -21,7 +28,7 @@ export const EmergencyService = {
         rx.items.map(i => `${i.medicine} ${i.dosage}`)
     );
 
-    return {
+    const profile = {
       name: patient.user.name,
       avatar: patient.user.avatar,
       bloodGroup: patient.bloodGroup,
@@ -38,9 +45,20 @@ export const EmergencyService = {
         currentMeds: meds
       }
     };
+
+    // Cache for 5 minutes (Emergency data doesn't change often but needs high availability)
+    await CacheService.set(cacheKey, profile, 300);
+
+    return profile;
   },
 
   async logEmergencyAccess(wyshId, reqInfo) {
+    // Emit event instead of writing to DB directly in the request path
+    EventBus.publish(EVENTS.EMERGENCY_ACCESSED, { 
+        wyshId, 
+        ip: reqInfo.ip 
+    });
+
     const patient = await prisma.patient.findUnique({ where: { wyshId } });
     if (patient) {
       await prisma.accessLog.create({

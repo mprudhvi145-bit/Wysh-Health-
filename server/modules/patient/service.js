@@ -2,9 +2,17 @@
 import { prisma } from '../../lib/prisma.js';
 import { CryptoLib } from '../../lib/crypto.js';
 import { randomUUID } from 'crypto';
+import { CacheService } from '../../lib/cache.js';
+import { EventBus, EVENTS } from '../../lib/events.js';
 
 export const PatientService = {
   async getProfile(userId) {
+    // 1. Check Cache
+    const cacheKey = `patient:profile:${userId}`;
+    const cached = await CacheService.get(cacheKey);
+    if (cached) return cached;
+
+    // 2. Database Fetch
     const patient = await prisma.patient.findUnique({
       where: { userId },
       include: {
@@ -22,6 +30,9 @@ export const PatientService = {
         // Decrypt on read
         patient.emergencyProfile.instructions = CryptoLib.decrypt(patient.emergencyProfile.instructions);
     }
+
+    // 3. Set Cache (Short TTL for Profile)
+    await CacheService.set(cacheKey, patient, 60); // 1 minute
 
     return patient;
   },
@@ -46,7 +57,7 @@ export const PatientService = {
     // In prod, encrypt the URL if it contains sensitive tokens, or encrypt file content
     const mockUrl = `https://storage.wysh.care/patients/${patient.id}/${randomUUID()}.pdf`;
 
-    return prisma.document.create({
+    const doc = await prisma.document.create({
       data: {
         patientId: patient.id,
         type: type,
@@ -55,6 +66,15 @@ export const PatientService = {
         createdAt: new Date(date)
       }
     });
+
+    // 4. Emit Event for Async Processing (AI Ingestion)
+    EventBus.publish(EVENTS.DOCUMENT_UPLOADED, { 
+        documentId: doc.id, 
+        userId: userId,
+        patientId: patient.id
+    });
+
+    return doc;
   },
 
   async hideRecord(userId, documentId) {
@@ -92,7 +112,7 @@ export const PatientService = {
     // Encrypt sensitive instructions
     const encryptedInstructions = data.instructions ? CryptoLib.encrypt(data.instructions) : null;
 
-    return prisma.emergencyProfile.upsert({
+    const updated = await prisma.emergencyProfile.upsert({
         where: { patientId: patient.id },
         create: {
             patientId: patient.id,
@@ -106,5 +126,12 @@ export const PatientService = {
             instructions: encryptedInstructions
         }
     });
+
+    // Invalidate Cache
+    await CacheService.del(`patient:profile:${userId}`);
+    // Also invalidate public emergency cache
+    await CacheService.del(`emergency:${patient.wyshId}`);
+
+    return updated;
   }
 };
