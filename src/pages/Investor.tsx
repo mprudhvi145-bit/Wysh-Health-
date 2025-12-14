@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
 import { GlassCard, Button, Badge } from '../components/UI';
-import { Download, TrendingUp, PieChart, Users, Play, ArrowRight, Activity } from 'lucide-react';
+import { Download, TrendingUp, PieChart, Users, Play, ArrowRight, Activity, Map } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { PitchDeck } from '../features/investor/PitchDeck';
+import { useNavigate } from 'react-router-dom';
 
 const GROWTH_DATA = [
   { year: '2022', val: 10 },
@@ -15,6 +16,7 @@ const GROWTH_DATA = [
 
 export const Investor: React.FC = () => {
   const [viewDeck, setViewDeck] = useState(false);
+  const navigate = useNavigate();
 
   if (viewDeck) {
       return <PitchDeck onClose={() => setViewDeck(false)} />;
@@ -34,7 +36,7 @@ export const Investor: React.FC = () => {
           Join us as we build the operating system for the next generation of hospitals.
         </p>
         
-        <div className="flex justify-center gap-4 pt-4">
+        <div className="flex justify-center gap-4 pt-4 flex-wrap">
             <Button 
                 variant="primary" 
                 onClick={() => setViewDeck(true)}
@@ -43,8 +45,8 @@ export const Investor: React.FC = () => {
             >
                 Launch Pitch Deck
             </Button>
-            <Button variant="outline" icon={<Download size={18} />}>
-                Download PDF
+            <Button variant="outline" icon={<Map size={18} />} onClick={() => navigate('/resources/roadmap')}>
+                View Scale Roadmap
             </Button>
         </div>
       </div>

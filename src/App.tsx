@@ -38,7 +38,8 @@ import { AbhaManager } from './features/patient/pages/AbhaManager';
 import { EmergencyAccess } from './features/patient/pages/EmergencyAccess';
 import { EmergencyPublic } from './pages/EmergencyPublic';
 import { SystemHealth } from './pages/admin/SystemHealth';
-import { PilotHandbooks } from './pages/resources/PilotHandbooks'; // NEW
+import { PilotHandbooks } from './pages/resources/PilotHandbooks';
+import { ScaleRoadmap } from './pages/resources/ScaleRoadmap'; // NEW
 
 const App: React.FC = () => {
   return (
@@ -72,6 +73,7 @@ const App: React.FC = () => {
                             
                             {/* Resources */}
                             <Route path="/resources/pilot-handbooks" element={<PilotHandbooks />} />
+                            <Route path="/resources/roadmap" element={<ScaleRoadmap />} />
 
                             {/* Doctors Public */}
                             <Route path="/doctors" element={<DoctorDirectory />} />
