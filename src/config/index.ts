@@ -10,9 +10,8 @@ export const config = {
   environment: env.MODE || 'development',
   
   // Critical: Runtime Data Source Switch
-  // 'MOCK': Forces services to return static/browser-storage data (Offline Dev)
-  // 'API': Forces services to call the backend (Production/Integration)
-  dataMode: (env.VITE_USE_MOCK === 'true' ? 'MOCK' : 'API') as DataMode,
+  // Defaults to 'MOCK' to ensure UI works without backend unless explicitly set to 'API' via VITE_USE_MOCK=false
+  dataMode: (env.VITE_USE_MOCK === 'false' ? 'API' : 'MOCK') as DataMode,
   
   timeout: 10000,
   
