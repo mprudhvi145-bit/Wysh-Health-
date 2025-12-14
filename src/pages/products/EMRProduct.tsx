@@ -101,7 +101,7 @@ export const EMRProduct: React.FC = () => {
             </GlassCard>
         </div>
 
-        {/* Master Data Section (The Original Products Content) */}
+        {/* Master Data Section (Migrated from old Products.tsx) */}
         <div className="space-y-8 pt-12 border-t border-white/10">
             <div className="text-center">
                 <Badge color="purple">System Master Data</Badge>

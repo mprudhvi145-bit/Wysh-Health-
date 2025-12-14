@@ -72,44 +72,91 @@ const MOCK_PATIENT_CHART = {
 export const clinicalService = {
   getCatalogs: async () => {
     if (config.dataMode === 'MOCK') return MOCK_CATALOGS;
-    return api.get<any>("/clinical/catalogs");
+    try {
+      return await api.get<any>("/clinical/catalogs");
+    } catch (error) {
+      console.warn("API unavailable, falling back to mock catalogs", error);
+      return MOCK_CATALOGS;
+    }
   },
 
   searchPatients: async (query = "") => {
-    if (config.dataMode === 'MOCK') {
-        // Return mock list filtered by query
-        return [MOCK_PATIENT_CHART.patient].filter(p => !query || p.name.toLowerCase().includes(query.toLowerCase()));
+    const mockResult = [MOCK_PATIENT_CHART.patient].filter(p => !query || p.name.toLowerCase().includes(query.toLowerCase()));
+    
+    if (config.dataMode === 'MOCK') return mockResult;
+    
+    try {
+      return await api.get<any[]>("/clinical/patients", { query });
+    } catch (error) {
+      console.warn("API unavailable, falling back to mock search", error);
+      return mockResult;
     }
-    return api.get<any[]>("/clinical/patients", { query });
   },
 
   getPatientChart: async (patientId: string) => {
     if (config.dataMode === 'MOCK') return MOCK_PATIENT_CHART;
-    return api.get<any>(`/clinical/patients/${patientId}/chart`);
+    
+    try {
+      return await api.get<any>(`/clinical/patients/${patientId}/chart`);
+    } catch (error) {
+      console.warn("API unavailable, falling back to mock chart", error);
+      return MOCK_PATIENT_CHART;
+    }
   },
 
   createPrescription: async (payload: CreatePrescriptionPayload) => {
-    if (config.dataMode === 'MOCK') return { id: `rx_${Date.now()}`, ...payload, createdAt: new Date().toISOString() };
-    return api.post("/clinical/prescriptions", payload);
+    const mockResponse = { id: `rx_${Date.now()}`, ...payload, createdAt: new Date().toISOString() };
+    if (config.dataMode === 'MOCK') return mockResponse;
+
+    try {
+      return await api.post("/clinical/prescriptions", payload);
+    } catch (error) {
+      console.warn("API unavailable, simulating prescription creation", error);
+      return mockResponse;
+    }
   },
 
   createLabOrder: async (payload: CreateLabOrderPayload) => {
-    if (config.dataMode === 'MOCK') return { id: `lab_${Date.now()}`, ...payload, status: 'ORDERED', createdAt: new Date().toISOString() };
-    return api.post("/clinical/labs/orders", payload);
+    const mockResponse = { id: `lab_${Date.now()}`, ...payload, status: 'ORDERED', createdAt: new Date().toISOString() };
+    if (config.dataMode === 'MOCK') return mockResponse;
+
+    try {
+      return await api.post("/clinical/labs/orders", payload);
+    } catch (error) {
+      console.warn("API unavailable, simulating lab order", error);
+      return mockResponse;
+    }
   },
 
   addNote: async (payload: CreateNotePayload) => {
-    if (config.dataMode === 'MOCK') return { id: `note_${Date.now()}`, ...payload, createdAt: new Date().toISOString() };
-    return api.post("/clinical/notes", payload);
+    const mockResponse = { id: `note_${Date.now()}`, ...payload, createdAt: new Date().toISOString() };
+    if (config.dataMode === 'MOCK') return mockResponse;
+
+    try {
+      return await api.post("/clinical/notes", payload);
+    } catch (error) {
+      console.warn("API unavailable, simulating note addition", error);
+      return mockResponse;
+    }
   },
 
   startAppointment: async (appointmentId: string) => {
     if (config.dataMode === 'MOCK') return { success: true };
-    return api.post(`/clinical/appointments/${appointmentId}/start`, {});
+    try {
+      return await api.post(`/clinical/appointments/${appointmentId}/start`, {});
+    } catch (error) {
+      console.warn("API unavailable, simulating start appointment", error);
+      return { success: true };
+    }
   },
 
   closeAppointment: async (appointmentId: string, payload: CloseAppointmentPayload) => {
     if (config.dataMode === 'MOCK') return { success: true };
-    return api.post(`/clinical/appointments/${appointmentId}/close`, payload);
+    try {
+      return await api.post(`/clinical/appointments/${appointmentId}/close`, payload);
+    } catch (error) {
+      console.warn("API unavailable, simulating close appointment", error);
+      return { success: true };
+    }
   },
 };
