@@ -33,130 +33,139 @@ import { PatientLabs } from './features/patient/pages/PatientLabs';
 import { AppointmentSummary } from './features/patient/pages/AppointmentSummary';
 import { AIInsights } from './features/patient/pages/AIInsights';
 import { AbhaManager } from './features/patient/pages/AbhaManager';
-import { EmergencyAccess } from './features/patient/pages/EmergencyAccess'; // New Import
+import { EmergencyAccess } from './features/patient/pages/EmergencyAccess';
+import { EmergencyPublic } from './pages/EmergencyPublic'; // New Import
 
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
         <AuthProvider>
         <Router>
-            <Layout>
             <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/investors" element={<Investor />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/team" element={<Team />} />
-                
-                {/* Product Suite */}
-                <Route path="/products" element={<Products />} />
-                <Route path="/products/wysh-id" element={<WyshIdProduct />} />
-                <Route path="/products/emr" element={<EMRProduct />} />
-                <Route path="/products/ai-clinical" element={<AIClinicalProduct />} />
-                <Route path="/products/abdm" element={<ABDMProduct />} />
-                <Route path="/products/how-it-works" element={<HowItWorks />} />
-                
-                {/* Doctors Public */}
-                <Route path="/doctors" element={<DoctorDirectory />} />
-                <Route path="/doctors/:id" element={<DoctorProfile />} />
-                
-                {/* Protected Routes */}
-                <Route path="/book/:doctorId" element={
-                    <ProtectedRoute>
-                        <BookingPage />
-                    </ProtectedRoute>
-                } />
-                
-                <Route path="/dashboard" element={
-                    <ProtectedRoute>
-                        <Dashboard />
-                    </ProtectedRoute>
-                } />
+                {/* Public Emergency Route (No Layout) */}
+                <Route path="/emergency-view/:wyshId" element={<EmergencyPublic />} />
 
-                <Route path="/dashboard/records" element={
-                    <ProtectedRoute>
-                        <HealthRecords />
-                    </ProtectedRoute>
-                } />
-                
-                <Route path="/dashboard/insights" element={
-                    <ProtectedRoute>
-                        <AIInsights />
-                    </ProtectedRoute>
-                } />
+                {/* Main App Routes */}
+                <Route path="*" element={
+                    <Layout>
+                        <Routes>
+                            {/* Public Routes */}
+                            <Route path="/" element={<Home />} />
+                            <Route path="/login" element={<Login />} />
+                            <Route path="/signup" element={<Signup />} />
+                            <Route path="/investors" element={<Investor />} />
+                            <Route path="/contact" element={<Contact />} />
+                            <Route path="/team" element={<Team />} />
+                            
+                            {/* Product Suite */}
+                            <Route path="/products" element={<Products />} />
+                            <Route path="/products/wysh-id" element={<WyshIdProduct />} />
+                            <Route path="/products/emr" element={<EMRProduct />} />
+                            <Route path="/products/ai-clinical" element={<AIClinicalProduct />} />
+                            <Route path="/products/abdm" element={<ABDMProduct />} />
+                            <Route path="/products/how-it-works" element={<HowItWorks />} />
+                            
+                            {/* Doctors Public */}
+                            <Route path="/doctors" element={<DoctorDirectory />} />
+                            <Route path="/doctors/:id" element={<DoctorProfile />} />
+                            
+                            {/* Protected Routes */}
+                            <Route path="/book/:doctorId" element={
+                                <ProtectedRoute>
+                                    <BookingPage />
+                                </ProtectedRoute>
+                            } />
+                            
+                            <Route path="/dashboard" element={
+                                <ProtectedRoute>
+                                    <Dashboard />
+                                </ProtectedRoute>
+                            } />
 
-                <Route path="/dashboard/prescriptions" element={
-                    <ProtectedRoute>
-                        <PatientPrescriptions />
-                    </ProtectedRoute>
-                } />
+                            <Route path="/dashboard/records" element={
+                                <ProtectedRoute>
+                                    <HealthRecords />
+                                </ProtectedRoute>
+                            } />
+                            
+                            <Route path="/dashboard/insights" element={
+                                <ProtectedRoute>
+                                    <AIInsights />
+                                </ProtectedRoute>
+                            } />
 
-                <Route path="/dashboard/labs" element={
-                    <ProtectedRoute>
-                        <PatientLabs />
-                    </ProtectedRoute>
-                } />
+                            <Route path="/dashboard/prescriptions" element={
+                                <ProtectedRoute>
+                                    <PatientPrescriptions />
+                                </ProtectedRoute>
+                            } />
 
-                <Route path="/appointments" element={
-                    <ProtectedRoute>
-                        <AppointmentListPage />
-                    </ProtectedRoute>
-                } />
+                            <Route path="/dashboard/labs" element={
+                                <ProtectedRoute>
+                                    <PatientLabs />
+                                </ProtectedRoute>
+                            } />
 
-                <Route path="/appointments/:id" element={
-                    <ProtectedRoute>
-                        <AppointmentDetail />
-                    </ProtectedRoute>
-                } />
+                            <Route path="/appointments" element={
+                                <ProtectedRoute>
+                                    <AppointmentListPage />
+                                </ProtectedRoute>
+                            } />
 
-                <Route path="/appointments/:id/summary" element={
-                    <ProtectedRoute>
-                        <AppointmentSummary />
-                    </ProtectedRoute>
-                } />
+                            <Route path="/appointments/:id" element={
+                                <ProtectedRoute>
+                                    <AppointmentDetail />
+                                </ProtectedRoute>
+                            } />
 
-                <Route path="/profile" element={
-                    <ProtectedRoute>
-                        <ProfilePage />
-                    </ProtectedRoute>
-                } />
+                            <Route path="/appointments/:id/summary" element={
+                                <ProtectedRoute>
+                                    <AppointmentSummary />
+                                </ProtectedRoute>
+                            } />
 
-                <Route path="/abha" element={
-                    <ProtectedRoute>
-                        <AbhaManager />
-                    </ProtectedRoute>
-                } />
+                            <Route path="/profile" element={
+                                <ProtectedRoute>
+                                    <ProfilePage />
+                                </ProtectedRoute>
+                            } />
 
-                {/* New Emergency Access Route */}
-                <Route path="/emergency" element={
-                    <ProtectedRoute>
-                        <EmergencyAccess />
-                    </ProtectedRoute>
-                } />
+                            <Route path="/abha" element={
+                                <ProtectedRoute>
+                                    <AbhaManager />
+                                </ProtectedRoute>
+                            } />
 
-                <Route path="/doctor/patients" element={
-                    <ProtectedRoute>
-                        <PatientManager />
-                    </ProtectedRoute>
-                } />
+                            {/* Patient's Emergency Settings */}
+                            <Route path="/emergency" element={
+                                <ProtectedRoute>
+                                    <EmergencyAccess />
+                                </ProtectedRoute>
+                            } />
 
-                 <Route path="/doctor/schedule" element={
-                    <ProtectedRoute>
-                        <ScheduleManager />
-                    </ProtectedRoute>
-                } />
+                            <Route path="/doctor/patients" element={
+                                <ProtectedRoute>
+                                    <PatientManager />
+                                </ProtectedRoute>
+                            } />
 
-                <Route path="/ai-health" element={
-                    <ProtectedRoute>
-                        <AIHealthDash />
-                    </ProtectedRoute>
+                            <Route path="/doctor/schedule" element={
+                                <ProtectedRoute>
+                                    <ScheduleManager />
+                                </ProtectedRoute>
+                            } />
+
+                            <Route path="/ai-health" element={
+                                <ProtectedRoute>
+                                    <AIHealthDash />
+                                </ProtectedRoute>
+                            } />
+                            
+                            <Route path="/ecosystem" element={<Navigate to="/" />} />
+                        </Routes>
+                    </Layout>
                 } />
-                
-                <Route path="/ecosystem" element={<Navigate to="/" />} />
             </Routes>
-            </Layout>
         </Router>
         </AuthProvider>
     </ErrorBoundary>

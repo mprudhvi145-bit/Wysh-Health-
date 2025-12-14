@@ -3,9 +3,14 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthContextType, LoginCredentials, SignupCredentials, User, Role } from '../types/auth';
 import { authService } from '../services/authService';
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+interface ExtendedAuthContextType extends AuthContextType {
+    loginWithOtp: (identifier: string, code: string) => Promise<void>;
+    requestOtp: (identifier: string) => Promise<void>;
+}
 
-// Demo Users
+const AuthContext = createContext<ExtendedAuthContextType | undefined>(undefined);
+
+// Demo Users (Fallback)
 const DEMO_PATIENT: User = {
     id: 'usr_pat_1',
     name: 'Alex Doe',
@@ -21,6 +26,14 @@ const DEMO_DOCTOR: User = {
     role: 'doctor',
     specialty: 'Cardiology',
     avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=200'
+};
+
+const DEMO_ADMIN: User = {
+    id: 'usr_admin_1',
+    name: 'Admin User',
+    email: 'admin@wysh.demo',
+    role: 'admin',
+    avatar: ''
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -93,20 +106,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const switchRole = (role: Role) => {
       setIsLoading(true);
-      // Simulate network delay for realism
       setTimeout(() => {
-          if (role === 'doctor') {
-              setUser(DEMO_DOCTOR);
-          } else {
-              setUser(DEMO_PATIENT);
-          }
+          if (role === 'doctor') setUser(DEMO_DOCTOR);
+          else if (role === 'admin') setUser(DEMO_ADMIN);
+          else setUser(DEMO_PATIENT);
           setIsAuthenticated(true);
           setIsLoading(false);
       }, 600);
   };
 
+  const requestOtp = async (identifier: string) => {
+      await authService.requestOtp(identifier);
+  };
+
+  const loginWithOtp = async (identifier: string, code: string) => {
+      setIsLoading(true);
+      try {
+          const response = await authService.verifyOtp(identifier, code);
+          setUser(response.user);
+          setIsAuthenticated(true);
+      } finally {
+          setIsLoading(false);
+      }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, loginWithGoogle, register, logout, switchRole }}>
+    <AuthContext.Provider value={{ 
+        user, isAuthenticated, isLoading, 
+        login, loginWithGoogle, register, logout, switchRole,
+        requestOtp, loginWithOtp
+    }}>
       {children}
     </AuthContext.Provider>
   );
