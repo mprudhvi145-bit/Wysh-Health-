@@ -33,6 +33,7 @@ import { PatientLabs } from './features/patient/pages/PatientLabs';
 import { AppointmentSummary } from './features/patient/pages/AppointmentSummary';
 import { AIInsights } from './features/patient/pages/AIInsights';
 import { AbhaManager } from './features/patient/pages/AbhaManager';
+import { EmergencyAccess } from './features/patient/pages/EmergencyAccess'; // New Import
 
 const App: React.FC = () => {
   return (
@@ -122,10 +123,16 @@ const App: React.FC = () => {
                     </ProtectedRoute>
                 } />
 
-                {/* ABDM Route */}
                 <Route path="/abha" element={
                     <ProtectedRoute>
                         <AbhaManager />
+                    </ProtectedRoute>
+                } />
+
+                {/* New Emergency Access Route */}
+                <Route path="/emergency" element={
+                    <ProtectedRoute>
+                        <EmergencyAccess />
                     </ProtectedRoute>
                 } />
 

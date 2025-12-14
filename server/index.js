@@ -22,9 +22,10 @@ import { prisma } from './lib/prisma.js';
 // Modules
 import { clinicalRouter } from './modules/clinical/routes.js';
 import { abdmRouter } from './modules/abdm/routes.js';
-import { authRouter } from './modules/auth/routes.js'; // NEW
-import { consentRouter } from './modules/consent/routes.js'; // NEW
-import { emergencyRouter } from './modules/emergency/routes.js'; // NEW
+import { authRouter } from './modules/auth/routes.js'; 
+import { consentRouter } from './modules/consent/routes.js';
+import { emergencyRouter } from './modules/emergency/routes.js'; 
+import { patientRouter } from './modules/patient/routes.js'; // NEW
 
 import { jwtAuthGuard } from './middleware/guards.js';
 import { errorHandler } from './middleware/error.js';
@@ -105,6 +106,7 @@ app.use('/api/emergency', emergencyRouter);
 // 2. Domain Modules
 app.use('/api/clinical', clinicalRouter);
 app.use('/api/abdm', abdmRouter);
+app.use('/api/patient', patientRouter); // NEW: Patient Portal
 
 // Audit Endpoint
 app.get('/api/audit/mine', jwtAuthGuard, (req, res) => {
