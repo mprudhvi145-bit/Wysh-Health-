@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { AlertTriangle, X, LifeBuoy, BookOpen } from 'lucide-react';
+import { AlertTriangle, X, LifeBuoy, BookOpen, Map } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const PilotBanner: React.FC = () => {
@@ -20,12 +20,15 @@ export const PilotBanner: React.FC = () => {
         <span className="hidden md:inline">Controlled Access Only. Features may change.</span>
       </div>
       
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-4 md:gap-6">
+          <button onClick={() => navigate('/resources/roadmap')} className="flex items-center gap-2 text-xs font-bold text-teal hover:text-white transition-colors">
+              <Map size={14} /> Roadmap
+          </button>
           <button onClick={() => navigate('/resources/pilot-handbooks')} className="flex items-center gap-2 text-xs font-bold text-white hover:text-teal transition-colors">
-              <BookOpen size={14} /> View Handbooks
+              <BookOpen size={14} /> Handbooks
           </button>
           <button onClick={() => navigate('/contact')} className="flex items-center gap-2 text-xs font-bold text-teal hover:text-white transition-colors">
-              <LifeBuoy size={14} /> Pilot Support
+              <LifeBuoy size={14} /> Support
           </button>
           <button onClick={() => setVisible(false)} className="text-orange-200/50 hover:text-white transition-colors hidden md:block">
             <X size={16} />

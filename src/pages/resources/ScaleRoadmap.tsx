@@ -1,10 +1,8 @@
-
 import React from 'react';
 import { GlassCard, Button, Badge } from '../../components/UI';
 import { 
-  Milestone, ArrowRight, ShieldCheck, Users, 
-  TrendingUp, AlertTriangle, CheckCircle, Lock, 
-  Building2, Database, Brain, Globe, ArrowLeft
+  CheckCircle, Building2, Database, Brain, Globe, ArrowLeft, 
+  TrendingUp, Users, AlertTriangle, ShieldCheck
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -227,6 +225,31 @@ export const ScaleRoadmap: React.FC = () => {
                 </table>
             </div>
         </GlassCard>
+
+        {/* The Big Picture Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="md:col-span-2 flex items-center">
+                <h3 className="text-2xl font-display font-bold text-white">
+                    What You Have Now<br/>
+                    <span className="text-teal text-lg">System Status</span>
+                </h3>
+            </div>
+            <GlassCard className="text-center p-4">
+                <CheckCircle size={24} className="mx-auto text-teal mb-2" />
+                <p className="text-sm font-bold text-white">Real EMR</p>
+                <p className="text-xs text-text-secondary">Clinical Grade</p>
+            </GlassCard>
+            <GlassCard className="text-center p-4">
+                <ShieldCheck size={24} className="mx-auto text-purple mb-2" />
+                <p className="text-sm font-bold text-white">Safe Pilot</p>
+                <p className="text-xs text-text-secondary">Controlled Env</p>
+            </GlassCard>
+            <GlassCard className="text-center p-4">
+                <TrendingUp size={24} className="mx-auto text-blue-400 mb-2" />
+                <p className="text-sm font-bold text-white">Scale Plan</p>
+                <p className="text-xs text-text-secondary">Phased Growth</p>
+            </GlassCard>
+        </div>
 
         {/* Footer */}
         <div className="text-center pt-8 border-t border-white/10">
