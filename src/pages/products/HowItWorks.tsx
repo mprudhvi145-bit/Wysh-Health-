@@ -13,41 +13,41 @@ export const HowItWorks: React.FC = () => {
       id: 1,
       title: "Patient Onboarding",
       icon: <User size={24}/>,
-      desc: "Patient creates a Wysh ID and links their ABHA. Past records are fetched via ABDM consent.",
+      desc: "Patients create a Wysh ID and optionally link ABHA.",
       action: "View Identity",
-      link: "/profile"
+      link: "/products/wysh-id"
     },
     {
       id: 2,
-      title: "The Consultation",
+      title: "Doctor Consultation",
       icon: <Stethoscope size={24}/>,
-      desc: "Doctor opens the clinical console. AI surfaces key history. A live video visit or in-person encounter begins.",
+      desc: "Doctors conduct consultations using structured notes, prescriptions, and lab orders.",
       action: "Doctor Console",
-      link: "/doctor/patients"
-    },
-    {
-      id: 3,
-      title: "Clinical Workflow",
-      icon: <FileText size={24}/>,
-      desc: "Doctor types SOAP notes. AI suggests diagnosis codes. Prescriptions and Lab Orders are one click away.",
-      action: "View EMR Flow",
       link: "/products/emr"
     },
     {
-      id: 4,
-      title: "Diagnostic Loop",
+      id: 3,
+      title: "Labs & Reports",
       icon: <TestTube size={24}/>,
-      desc: "Lab results are uploaded. AI analyzes values for anomalies and updates the patient's longitudinal record.",
-      action: "View Results",
-      link: "/dashboard/labs"
+      desc: "Lab results are uploaded, stored securely, and summarized using AI assistance.",
+      action: "View AI Insights",
+      link: "/products/ai-clinical"
+    },
+    {
+      id: 4,
+      title: "Patient Access",
+      icon: <FileText size={24}/>,
+      desc: "Patients view prescriptions, reports, and plain-language summaries in one place.",
+      action: "Patient Dashboard",
+      link: "/dashboard"
     },
     {
       id: 5,
-      title: "Continuity of Care",
+      title: "ABDM Exchange",
       icon: <ShieldCheck size={24}/>,
-      desc: "Patient receives a plain-language summary. Follow-ups are automated. Data is securely stored.",
-      action: "Patient Dashboard",
-      link: "/dashboard"
+      desc: "With explicit consent, records can be fetched from or shared with external systems.",
+      action: "View Compliance",
+      link: "/products/abdm"
     }
   ];
 
@@ -55,7 +55,7 @@ export const HowItWorks: React.FC = () => {
     <div className="max-w-6xl mx-auto px-6 py-12">
         <div className="text-center mb-16">
             <h1 className="text-4xl font-display font-bold text-white mb-4">How Wysh Care Works</h1>
-            <p className="text-text-secondary">The end-to-end journey from symptoms to care.</p>
+            <p className="text-text-secondary">A patient’s healthcare journey, end to end.</p>
         </div>
 
         {/* Stepper Navigation */}
@@ -110,31 +110,30 @@ export const HowItWorks: React.FC = () => {
                 <table className="w-full text-left">
                     <thead className="bg-white/5 text-text-secondary text-xs uppercase">
                         <tr>
-                            <th className="p-4">Product Module</th>
-                            <th className="p-4">Core Feature</th>
-                            <th className="p-4">Operational Outcome</th>
+                            <th className="p-4">Feature</th>
+                            <th className="p-4">Outcome</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5 text-sm">
                         <tr className="hover:bg-white/5 transition-colors">
-                            <td className="p-4 text-white font-medium">Wysh EMR</td>
-                            <td className="p-4 text-text-secondary">Smart SOAP Templates</td>
-                            <td className="p-4 text-teal">40% faster documentation time</td>
+                            <td className="p-4 text-white font-medium">Structured SOAP Notes</td>
+                            <td className="p-4 text-teal">Faster, safer consultations</td>
                         </tr>
                         <tr className="hover:bg-white/5 transition-colors">
-                            <td className="p-4 text-white font-medium">ABDM Gateway</td>
-                            <td className="p-4 text-text-secondary">Consent-driven History</td>
-                            <td className="p-4 text-teal">Reduced duplicate testing by 25%</td>
+                            <td className="p-4 text-white font-medium">AI Summaries</td>
+                            <td className="p-4 text-teal">Reduced clinician burnout</td>
                         </tr>
                         <tr className="hover:bg-white/5 transition-colors">
-                            <td className="p-4 text-white font-medium">AI Insights</td>
-                            <td className="p-4 text-text-secondary">Automated Summaries</td>
-                            <td className="p-4 text-teal">Improved patient adherence</td>
+                            <td className="p-4 text-white font-medium">Wysh ID</td>
+                            <td className="p-4 text-teal">Lifetime health continuity</td>
                         </tr>
                         <tr className="hover:bg-white/5 transition-colors">
-                            <td className="p-4 text-white font-medium">Telemedicine</td>
-                            <td className="p-4 text-text-secondary">Integrated Vitals</td>
-                            <td className="p-4 text-teal">Remote monitoring capability</td>
+                            <td className="p-4 text-white font-medium">ABDM Consent</td>
+                            <td className="p-4 text-teal">Government compliance</td>
+                        </tr>
+                        <tr className="hover:bg-white/5 transition-colors">
+                            <td className="p-4 text-white font-medium">Audit Logs</td>
+                            <td className="p-4 text-teal">Legal & operational safety</td>
                         </tr>
                     </tbody>
                 </table>

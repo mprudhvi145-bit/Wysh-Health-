@@ -11,6 +11,8 @@ import { Products } from './pages/Products';
 import { EMRProduct } from './pages/products/EMRProduct';
 import { ABDMProduct } from './pages/products/ABDMProduct';
 import { HowItWorks } from './pages/products/HowItWorks';
+import { WyshIdProduct } from './pages/products/WyshIdProduct';
+import { AIClinicalProduct } from './pages/products/AIClinicalProduct';
 import { AIHealthDash } from './pages/AIHealthDash';
 import { AuthProvider } from './context/AuthContext';
 import { Login } from './pages/Auth/Login';
@@ -49,7 +51,9 @@ const App: React.FC = () => {
                 
                 {/* Product Suite */}
                 <Route path="/products" element={<Products />} />
+                <Route path="/products/wysh-id" element={<WyshIdProduct />} />
                 <Route path="/products/emr" element={<EMRProduct />} />
+                <Route path="/products/ai-clinical" element={<AIClinicalProduct />} />
                 <Route path="/products/abdm" element={<ABDMProduct />} />
                 <Route path="/products/how-it-works" element={<HowItWorks />} />
                 
