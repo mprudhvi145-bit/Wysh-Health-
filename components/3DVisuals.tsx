@@ -2,11 +2,15 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
+const isReducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 // --- DNA Helix Component ---
 export const DNAHelix: React.FC<{ className?: string }> = React.memo(({ className }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (isReducedMotion()) return; // Skip for accessibility/performance
+
     const container = containerRef.current;
     if (!container) return;
 
@@ -124,6 +128,8 @@ export const DNAHelix: React.FC<{ className?: string }> = React.memo(({ classNam
     };
   }, []);
 
+  if (isReducedMotion()) return <div className={`w-full h-full ${className} bg-teal/5 rounded-full`} />;
+
   return <div ref={containerRef} className={`w-full h-full ${className}`} />;
 });
 
@@ -132,6 +138,8 @@ export const HolographicModel: React.FC = React.memo(() => {
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        if (isReducedMotion()) return;
+
         const container = containerRef.current;
         if (!container) return;
 
@@ -235,6 +243,8 @@ export const HolographicModel: React.FC = React.memo(() => {
         }
     }, []);
 
+    if (isReducedMotion()) return <div className="w-full h-full absolute inset-0 flex items-center justify-center text-teal/30 font-bold border border-teal/20 rounded-xl">3D MODEL PAUSED</div>;
+
     return <div ref={containerRef} className="w-full h-full absolute inset-0" />;
 });
 
@@ -243,6 +253,8 @@ export const NeuralGrid: React.FC = React.memo(() => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
+        if (isReducedMotion()) return;
+
         const canvas = canvasRef.current;
         if (!canvas) return;
         
@@ -320,6 +332,8 @@ export const NeuralGrid: React.FC = React.memo(() => {
         }
 
     }, []);
+
+    if (isReducedMotion()) return null;
 
     return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0 opacity-20" />;
 });

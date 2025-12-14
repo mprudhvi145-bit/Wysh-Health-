@@ -18,6 +18,7 @@ html, body {
   color: #C5C6C7;
   overflow-x: hidden;
   font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 body::before {
@@ -40,7 +41,7 @@ body::before {
   flex-direction: column;
 }
 
-/* Hybrid Glass Panel */
+/* Hybrid Glass Panel - Base */
 .glass-panel {
   background: var(--glass-surface);
   backdrop-filter: blur(16px);
@@ -53,6 +54,32 @@ body::before {
   background: var(--glass-highlight);
   border-color: rgba(102, 252, 241, 0.3); /* Teal Glow */
   box-shadow: 0 0 25px rgba(69, 162, 158, 0.15);
+}
+
+/* EMERGENCY MODE OVERRIDE - Critical Clinical Safety */
+.glass-panel.emergency {
+  background: #000000 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 2px solid #EF4444 !important; /* High Viz Red */
+  box-shadow: none !important;
+}
+
+/* HIGH CONTRAST MODE - Clinical Readability */
+.glass-panel.high-contrast {
+  background: #0B0C10 !important;
+  backdrop-filter: none !important;
+  border: 1px solid #E5E7EB !important; /* Gray-200 */
+}
+
+/* Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .text-glow {
